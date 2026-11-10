@@ -7,8 +7,3 @@ __pycache__/
 .ruff_cache/
 data/livekit/issues.json
 logs/
-raw_headers.jsonl
-diagnostics.jsonl
-results.csv
-context.md
-The_Relay_Assignment_Brief.pdf
