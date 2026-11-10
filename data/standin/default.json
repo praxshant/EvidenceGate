@@ -1,0 +1,17 @@
+{
+  "model": "stand-in-replay",
+  "base_delay_seconds": 0.02,
+  "jitter_seconds": 0.01,
+  "inter_chunk_seconds": 0.005,
+  "chunk_size": 32,
+  "transient_failure_rate": 0.0,
+  "timeout_rate": 0.0,
+  "permanent_failure_rate": 0.0,
+  "requests_per_minute": null,
+  "tokens_per_minute": null,
+  "requests_per_day": null,
+  "slowdown_per_concurrent": 0.01,
+  "concurrency_limit": null,
+  "calibration_status": "pending_real_groq_measurements",
+  "day_seconds": 86400
+}
