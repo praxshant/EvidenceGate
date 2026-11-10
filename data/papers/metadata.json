@@ -1,0 +1,41 @@
+{
+  "source": "arXiv versioned PDF URLs",
+  "papers": [
+    {
+      "short_name": "Attention Is All You Need",
+      "arxiv_id": "1706.03762",
+      "version": 7,
+      "pdf_url": "https://arxiv.org/pdf/1706.03762v7",
+      "filename": "attention_is_all_you_need_v7.pdf",
+      "local_pdf": "data\\papers\\attention_is_all_you_need_v7.pdf",
+      "version_verified": true,
+      "page_count": 15,
+      "nonempty_pages": 15,
+      "characters": 39498
+    },
+    {
+      "short_name": "Moshi",
+      "arxiv_id": "2410.00037",
+      "version": 1,
+      "pdf_url": "https://arxiv.org/pdf/2410.00037v1",
+      "filename": "moshi_v1.pdf",
+      "local_pdf": "data\\papers\\moshi_v1.pdf",
+      "version_verified": true,
+      "page_count": 66,
+      "nonempty_pages": 66,
+      "characters": 191396
+    },
+    {
+      "short_name": "Dynamic Chunking",
+      "arxiv_id": "2507.07955",
+      "version": 2,
+      "pdf_url": "https://arxiv.org/pdf/2507.07955v2",
+      "filename": "dynamic_chunking_v2.pdf",
+      "local_pdf": "data\\papers\\dynamic_chunking_v2.pdf",
+      "version_verified": true,
+      "page_count": 39,
+      "nonempty_pages": 39,
+      "characters": 145233
+    }
+  ]
+}
