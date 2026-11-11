@@ -58,9 +58,14 @@ async def run_probe(
             stream_obj = await client.chat.completions.create(
                 model=model,
                 messages=[{"role": "user", "content": "Say hello in one sentence."}],
-                max_tokens=max_tokens,
+                max_completion_tokens=max_tokens,
                 stream=True,
-                reasoning_format="hidden",
+                # For openai/gpt-oss-* on Groq: include_reasoning=False suppresses
+                # the reasoning field from the response payload so delta.content is
+                # populated. reasoning_effort="low" reduces (not eliminates) the
+                # reasoning token computation, leaving more budget for visible text.
+                include_reasoning=False,
+                reasoning_effort="low",
             )
 
             async for chunk in stream_obj:

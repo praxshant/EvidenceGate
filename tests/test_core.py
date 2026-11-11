@@ -1,6 +1,6 @@
 """Comprehensive test suite for EvidenceGate.
 
-Covers all 27 core test scenarios:
+Covers all 30 core test scenarios:
  1. Complete successful pipeline request
  2. Correctly refused unsupported request
  3. Partially supported request
@@ -28,6 +28,9 @@ Covers all 27 core test scenarios:
 25. Diagnostic timing consistency
 26. FastAPI /health
 27. FastAPI /ask with mocked/stand-in provider
+28. Latency invariant: total_ms >= first_token_ms for every row in results.csv
+29. GroqProvider call uses include_reasoning and reasoning_effort (not reasoning_format)
+30. Scenario summary never produces ttft_p50 > total_p50 on paired population
 """
 
 from __future__ import annotations
@@ -697,3 +700,94 @@ def test_api_ask_endpoint(tmp_path: Path, retriever: PaperRetriever) -> None:
     assert data["scenario"] == "fastapi_test"
     assert len(data["evidence"]) > 0
     assert isinstance(data["timing"], dict)
+
+
+# ---------------------------------------------------------------------------
+# 28. Latency invariant: total_ms >= first_token_ms for every row in results.csv
+# ---------------------------------------------------------------------------
+
+def test_results_csv_latency_invariants() -> None:
+    """Every row where first_token_ms is non-empty must have total_ms >= first_token_ms."""
+    csv_path = ROOT / "results.csv"
+    if not csv_path.exists():
+        pytest.skip("results.csv not yet generated")
+    violations = []
+    with csv_path.open(newline="", encoding="utf-8") as fh:
+        for row in csv.DictReader(fh):
+            ttft_s = row.get("first_token_ms")
+            total_s = row.get("total_ms")
+            if ttft_s and total_s:
+                ttft = float(ttft_s)
+                total = float(total_s)
+                if total < ttft:
+                    violations.append(
+                        f"request_id={row.get('request_id')} "
+                        f"total_ms={total} < first_token_ms={ttft}"
+                    )
+    assert not violations, "Latency invariant violations found:\n" + "\n".join(violations)
+
+
+# ---------------------------------------------------------------------------
+# 29. GroqProvider uses include_reasoning and reasoning_effort, not reasoning_format
+# ---------------------------------------------------------------------------
+
+def test_groq_provider_uses_correct_reasoning_params() -> None:
+    """GroqProvider.stream must use include_reasoning and reasoning_effort,
+    not the unsupported reasoning_format parameter."""
+    import inspect
+    import src.providers.groq_client as gcm
+
+    source = inspect.getsource(gcm.GroqProvider.stream)
+    assert "reasoning_format" not in source, (
+        "GroqProvider.stream must not use reasoning_format (unsupported for GPT-OSS). "
+        "Use include_reasoning and reasoning_effort instead."
+    )
+    assert "include_reasoning" in source, "GroqProvider.stream must pass include_reasoning"
+    assert "reasoning_effort" in source, "GroqProvider.stream must pass reasoning_effort"
+    assert "max_completion_tokens" in source, (
+        "GroqProvider.stream must use max_completion_tokens, not deprecated max_tokens"
+    )
+
+
+# ---------------------------------------------------------------------------
+# 30. Scenario summary never produces ttft_p50 > total_p50 on paired population
+# ---------------------------------------------------------------------------
+
+def test_scenario_summary_no_ttft_total_inversion(tmp_path: Path) -> None:
+    """Paired latency summary must never show TTFT p50 > total p50."""
+    import importlib.util
+    import sys as _sys
+
+    spec = importlib.util.spec_from_file_location(
+        "analyze_results",
+        str(ROOT / "scripts" / "analyze_results.py"),
+    )
+    mod = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+
+    rows = []
+    for i in range(10):
+        rows.append({
+            "request_id": f"test-{i}",
+            "scenario": "steady_load",
+            "source": "stand-in",
+            "start_time": now_iso_hires(),
+            "first_token_ms": str(100.0 + i * 10),
+            "total_ms": str(500.0 + i * 10),
+            "status": "ok",
+            "retries": "0",
+            "tokens_in": "50",
+            "tokens_out": "20",
+            "retrieval_setting": "B",
+            "answer_grade": "",
+        })
+
+    summary = mod.scenario_summary(rows)
+    for s in summary:
+        if s.get("scenario") == "steady_load":
+            ttft_p50 = s.get("ttft_p50_ms")
+            total_p50 = s.get("total_p50_ms")
+            if isinstance(ttft_p50, (int, float)) and isinstance(total_p50, (int, float)):
+                assert total_p50 >= ttft_p50, (
+                    f"Latency population inversion: ttft_p50={ttft_p50} > total_p50={total_p50}"
+                )

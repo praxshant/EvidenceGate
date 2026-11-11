@@ -71,22 +71,26 @@ class GroqProvider(ModelProvider):
         self._last_usage = None
 
         try:
-            # F-04: capture the stream object so we can read headers afterwards
+            # For openai/gpt-oss-* models on Groq:
+            #   - include_reasoning=False suppresses the reasoning field from the
+            #     *response payload* so delta.content is populated instead.
+            #   - reasoning_effort="low" reduces (but does not eliminate) reasoning
+            #     token computation, freeing more of max_completion_tokens for text.
+            #   - max_completion_tokens is preferred over the deprecated max_tokens.
             stream_obj = await asyncio.wait_for(
                 self._client.chat.completions.create(
                     model=self._model,
                     messages=[{"role": "user", "content": request.prompt}],
-                    max_tokens=request.max_output_tokens,
+                    max_completion_tokens=request.max_output_tokens,
                     stream=True,
-                    # gpt-oss-20b is a reasoning model; hide the reasoning chain so
-                    # delta.content carries readable text instead of delta.reasoning.
-                    reasoning_format="hidden",
+                    include_reasoning=False,
+                    reasoning_effort="low",
                 ),
                 timeout=request.timeout_seconds,
             )
 
             async for chunk in stream_obj:
-                # F-05: capture usage from the final chunk
+                # Capture usage from the final chunk (available without stream_options)
                 if getattr(chunk, "usage", None) is not None:
                     self._last_usage = {
                         "prompt_tokens": chunk.usage.prompt_tokens,
