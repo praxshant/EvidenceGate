@@ -1,0 +1,15 @@
+{
+  "source": "GitHub REST API",
+  "endpoint": "https://api.github.com/repos/livekit/agents/issues",
+  "collection_utc": "2026-11-11T10:50:59.091606+00:00",
+  "requested_limit": 100,
+  "returned_records": 100,
+  "excluded_pull_requests": true,
+  "sampling": {
+    "method": "first limit non-pull-request issues returned by the GitHub REST API with state=all, sort=created, direction=asc, and per_page=100",
+    "cohort": "oldest available non-pull-request issues at collection time",
+    "limitations": "This is a chronological cohort, not a representative random sample. GitHub pagination and issue history can change between collection dates."
+  },
+  "content_sha256": "6ba2f92c9e8a80f86e19c1097b20b6af2e1569cbfd20bd58064de9823ec03df8",
+  "note": "The default Milestone 0 workflow only prepares this collector; it does not bulk collect."
+}

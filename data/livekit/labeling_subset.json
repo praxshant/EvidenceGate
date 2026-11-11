@@ -1,0 +1,212 @@
+[
+  {
+    "number": 133,
+    "title": "Elevenlabs plugin uses PCM 44.1KHz - Support Other Formats",
+    "body": "ElevenLabs plugin uses PCM 44.1KHz but it's only supported in the \"Independent Publisher, Growing Business\" price tiers. Support for lower sample rates would allow for the \"Free, Starter, Creator\" price tiers.",
+    "url": "https://github.com/livekit/agents/issues/133",
+    "label": null
+  },
+  {
+    "number": 134,
+    "title": "Error messages sent from ElevenLabs should be logged",
+    "body": "Debugging an API KEY issue was difficult because the message was not logged.",
+    "url": "https://github.com/livekit/agents/issues/134",
+    "label": null
+  },
+  {
+    "number": 147,
+    "title": " Is it allowed to create separate workers from 2 machines to handle audio, video separately?",
+    "body": "A worker accepts  agents.AutoSubscribe.VIDEO_ONLY,  \r\nand the other accepts agents.AutoSubscribe.AUDIO_ONLY,\r\nand they can interact via rtc.ChatMessage.\r\n\r\nThanks.",
+    "url": "https://github.com/livekit/agents/issues/147",
+    "label": null
+  },
+  {
+    "number": 151,
+    "title": "TorchAudio constantly fails due to no backend",
+    "body": "https://github.com/livekit/agents/blob/27ea3c13dc1632a83c11768534bdfa9ffcccfa48/livekit-plugins/livekit-plugins-openai/livekit/plugins/openai/tts.py#L46\r\n\r\nThe synthesize function does not work because Torchaudio has no available backends. I'm trying to find a workaround.",
+    "url": "https://github.com/livekit/agents/issues/151",
+    "label": null
+  },
+  {
+    "number": 186,
+    "title": "Adding timestamp (+ customizable logging configuration?) to worker logging ",
+    "body": "Currently, `worker.py` does not offer an easy way to customize log formats, particularly to include timestamps in logs for debugging. This makes it difficult to debug our worker deployment.\r\n\r\n**Feature request**\r\nAdd logging functionality to allow users to customize the log format, either by allowing users to use custom logger or simply adding another CLI flag to toggle timestamps in logs.\r\n\r\n**Questions for maintainers**\r\n- Have you considered adding timestamps to worker logging?\r\n- Is there a specific approach you prefer?\r\n\r\n",
+    "url": "https://github.com/livekit/agents/issues/186",
+    "label": null
+  },
+  {
+    "number": 189,
+    "title": "AttributeError on docker run: 'livekit.rtc' has no attribute 'ArgbFrame'",
+    "body": "I executed docker build and run as follows.\r\n\r\n```bash\r\ndocker build fal ./examples/fal\r\ndocker run fal\r\n```\r\n\r\nThen, the following error occurred.\r\n```bash\r\nTraceback (most recent call last):\r\n  File \"/app/fal.py\", line 21, in <module>\r\n    from fal_sd_turbo import FalSDTurbo\r\n  File \"/app/fal_sd_turbo.py\", line 61, in <module>\r\n    class SDTurboHighFPSStream:\r\n  File \"/app/fal_sd_turbo.py\", line 201, in SDTurboHighFPSStream\r\n    async def __anext__(self) -> rtc.ArgbFrame:\r\n                                 ^^^^^^^^^^^^^\r\nAttributeError: module 'livekit.rtc' has no attribute 'ArgbFrame'\r\n```\r\n\r\nI would appreciate it if you could tell me how to handle this error.\r\n\r\nThank you.\r\n",
+    "url": "https://github.com/livekit/agents/issues/189",
+    "label": null
+  },
+  {
+    "number": 437,
+    "title": "Feature Request: Support for Digital Avatars in Audio/Video and Text Communication",
+    "body": "I have familiarized myself with the project at https://livekit.io/kitt, and I believe it offers a great opportunity to seamlessly integrate with the ChatGPT API. I am curious to know if LiveKit is preparing for the emergence of Sora.\r\n\r\n---\r\nI am exploring innovative ways to enhance user interaction within my application, particularly through the integration of digital avatars. These avatars could either be predefined virtual characters or dynamically generated based on user inputs, such as descriptions or images. The core idea is to facilitate audio/video and text-based communication between the user and these digital avatars, enriching the overall user experience.\r\n\r\n### Feature Description:\r\n- **Digital Avatar Integration**: Ability to integrate digital avatars that serve as the user's counterpart in communications. These avatars can be virtual characters (predefined) or created dynamically from user inputs (text descriptions, images, etc.).\r\n- **Audio/Video Communication**: Users should be able to engage in audio/video calls with these avatars, where the avatars can generate responses in real-time.\r\n- **Text Communication**: Alongside audio/video capabilities, the system should support text-based interactions between the user and the avatar.\r\n- **Real-time Subtitles**: For audio and video communications, real-time subtitles or captions that reflect the avatar's responses could greatly enhance accessibility and user understanding.\r\n\r\n### Implementation Considerations:\r\n- **AI and Machine Learning**: Utilizing AI to interpret user inputs for dynamic avatar creation and to drive the interaction model (speech recognition, text-to-speech, natural language processing).\r\n- **LiveKit Integration**: How can LiveKit support the backend infrastructure for such an interaction model? This includes considerations for low-latency audio/video streaming and data transmission for text chat.\r\n- **Customizability and Scalability**: Ensuring the system supports a wide range of avata",
+    "url": "https://github.com/livekit/agents/issues/437",
+    "label": null
+  },
+  {
+    "number": 242,
+    "title": "agent architecture - recovery from agent shutdown",
+    "body": "if an agent (implemented by users of livekit using the python sdk) crashes, then ideally the livekit-backend should continue pinging the agent pool until another agent becomes available.\r\n\r\nhowever this is not the case:\r\nif the agent stops (for instance I am running the agent in my debugger, and stop the debugger to change code),\r\nand then run the agent again, the livekit-backend never calls my agent to rejoin the room.\r\n\r\nfor a system built with agents to become production-ready, this error recovery mechanism is a must ",
+    "url": "https://github.com/livekit/agents/issues/242",
+    "label": null
+  },
+  {
+    "number": 202,
+    "title": "deepgram transcribe quality in livekit much lower than when transcribing on deepgram demo website",
+    "body": "please compare the transcribing the accuracy of running the livekit+deepgram agent demo with running the deepgram demo on their website, you will see quality of transcription much higher on deepgram.\r\n\r\ndeepgram demo:\r\nhttps://console.deepgram.com/project/<YOUR_PROJECT_ID>/mission/transcribe-your-voice-in-realtime\r\n\r\nlivekit+agent demo:\r\nhttps://github.com/livekit/agents/tree/main/livekit-plugins/livekit-plugins-deepgram/livekit/plugins/deepgram\r\n",
+    "url": "https://github.com/livekit/agents/issues/202",
+    "label": null
+  },
+  {
+    "number": 214,
+    "title": "OnDemand Agent",
+    "body": "A use case we're exploring involves implementing a translator agent that would only be needed when participants are speaking different languages. It seems that an on-demand agent would be better suited than agents automatically joining the room since the translator agent wouldn't always be needed. We envision user interaction that allows for starting and stopping the agent as needed. Other than running \"python my_agent.py simulate-job --room-name <my-room>\", are there any other approaches for this or anything the team considering?\r\n",
+    "url": "https://github.com/livekit/agents/issues/214",
+    "label": null
+  },
+  {
+    "number": 218,
+    "title": "In Kitt example, eleven labs API throws many time out errors",
+    "body": "### What I expect\r\nWhen Running the agent I see logs but no errors\r\n\r\n### What happens\r\nThe repeated error you get while the agent is running:\r\n```bash\r\nERROR:root:Unhandled message from ElevenLabs: {'message': 'Have not received a new text input within the timeout of 20.0 seconds. Streaming input terminated. Please make sure to either feed the input in the timely manner, or to send the end of input text (empty string \"\") when done.', 'error': 'input_timeout_exceeded', 'code': 1008}\r\n```\r\n\r\n### How to reproduce\r\nFollow the steps to run the kitt example and open her up in the playground.\r\n\r\n### Severity\r\n\r\nThis error happens repeatedly and even after a few seconds of this failure on an unpaid eleven labs account a free account will get banned with this error response:\r\n```bash\r\nERROR:root:Unhandled message from ElevenLabs: {'message': 'Unusual activity detected. Free Tier usage disabled. If you are using \r\na proxy/VPN you might need to purchase a Paid Plan to not trigger our abuse detectors. Free Tier only works if users do not abuse it, for example by creating multiple free accounts. If we notice that many people try to abuse it, we will need to reconsider Free Tier altogether. \\nPlease play fair and purchase any Paid Subscription to continue.', 'error': 'detected_unusual_activity', 'code': 1008}\r\n```\r\n",
+    "url": "https://github.com/livekit/agents/issues/218",
+    "label": null
+  },
+  {
+    "number": 236,
+    "title": "wait_pc_connection error job_request.accept",
+    "body": "I am testing agents and everything has been working fine until today when I started getting wait_pc_connection error thrown in the async def job_request_cb(job_request: agents.JobRequest):\r\n    await job_request.accept(\r\n\r\nI am also seeing this in the logs, which I am not sure if is related:\r\n\r\n2024-04-12 11:09:44,964 - ERROR - livekit_api::signal_client::signal_stream:171:livekit_api::signal_client::signal_stream - unhandled websocket message Err(Protocol(ResetWithoutClosingHandshake))\r\n2024-04-12 11:09:44,965 - DEBUG - livekit::rtc_engine::rtc_session:455:livekit::rtc_engine::rtc_session - received leave request: LeaveRequest { can_reconnect: false, reason: DuplicateIdentity }\r\n\r\nI tried upgrading all the of the livekit python libraries but no luck.\r\n\r\nAny ideas?",
+    "url": "https://github.com/livekit/agents/issues/236",
+    "label": null
+  },
+  {
+    "number": 238,
+    "title": "KITT not working - latest master",
+    "body": "KITT example is not working throwing this exception:\r\n\r\n```\r\nException in thread Thread-2 (_write_thread):\r\nTraceback (most recent call last):\r\n  File \"/usr/lib/python3.10/threading.py\", line 1016, in _bootstrap_inner\r\n{\"asctime\": \"2024-04-13 20:00:42,152\", \"level\": \"DEBUG\", \"name\": \"root\", \"message\": \"process started\", \"job_id\": \"AJ_AUFCiWbbBkka\", \"url\": \"http://livekit-server.livekit\", \"pid\": 92412}\r\nfailed to write log: to_bytes() missing required argument 'byteorder' (pos 2)\r\n    self.run()\r\n  File \"/usr/lib/python3.10/threading.py\", line 953, in run\r\n    self._target(*self._args, **self._kwargs)\r\n  File \"/venv/lib/python3.10/site-packages/livekit/agents/apipe.py\", line 49, in _write_thread\r\n    ipc_enc.write_msg(self._p, msg)\r\n  File \"/venv/lib/python3.10/site-packages/livekit/agents/ipc_enc.py\", line 45, in write_msg\r\n    b.write(msg.MSG_ID.to_bytes(4))\r\nTypeError: to_bytes() missing required argument 'byteorder' (pos 2)\r\n```",
+    "url": "https://github.com/livekit/agents/issues/238",
+    "label": null
+  },
+  {
+    "number": 240,
+    "title": "Re-join the room after agent server restarted",
+    "body": "Currently, if agent server were restarted, all agents of joined rooms would be disconnected. Is there any way to make the agent re-join the room, or to invite the agent to the room actively?\r\n",
+    "url": "https://github.com/livekit/agents/issues/240",
+    "label": null
+  },
+  {
+    "number": 247,
+    "title": "Eleven Labs TTS Stream Doesn't return the text of the audio events being generated",
+    "body": "Just add this code to fix it please\r\n\r\n```\r\n          text = ''\r\n          try:\r\n              text = ''.join(msg['normalizedAlignment']['chars'])\r\n          except Exception:\r\n              pass\r\n```\r\n\r\nIn this section of the code\r\nenv/lib/python3.10/site-packages/livekit/plugins/elevenlabs/tts.py\r\n\r\n```\r\nLINE 286: msg = json.loads(msg.data)\r\nif msg.get(\"audio\"):\r\n    data = base64.b64decode(msg[\"audio\"])\r\n    audio_frame = rtc.AudioFrame(\r\n        data=data,\r\n        sample_rate=self._config.sample_rate,\r\n        num_channels=1,\r\n        samples_per_channel=len(data) // 2,\r\n    )\r\n    text = ''\r\n    try:\r\n        text = ''.join(msg['normalizedAlignment']['chars'])\r\n    except Exception:\r\n        pass\r\n    self._event_queue.put_nowait(\r\n        tts.SynthesisEvent(\r\n            type=tts.SynthesisEventType.AUDIO,\r\n            audio=tts.SynthesizedAudio(text=text, data=audio_frame),\r\n        )\r\n    )\r\n\r\n```\r\n\r\n",
+    "url": "https://github.com/livekit/agents/issues/247",
+    "label": null
+  },
+  {
+    "number": 250,
+    "title": "Hidden agent can not publish audio track ",
+    "body": "A hidden agent will not publish its audio track and have other participants subscribe to it. Other real participants do not automatically subscribe to this track and do not receive track publish events. If the agent is marked not hidden / or visible, then the tracks publish correctly and the other participants automatically subscribe to them. I imagine most use cases will be for the agent to be hidden. Is this a bug or by design? For a use case we are looking at, it would be great to have this functionality.",
+    "url": "https://github.com/livekit/agents/issues/250",
+    "label": null
+  },
+  {
+    "number": 256,
+    "title": "Can clients re-use token after disconnect?",
+    "body": "I recently used livekit for my application using agents example. And I had a problem:\r\n### **What happended?**\r\n\r\nI use Android application to connect to livekit with genereated token and wss url, everything is okay. Then I disconnect my client from livekit using room.disconnect(). I saw that my agents still running for this room. After that, I reconnect using the same token and I only see a black screen. \r\nIn server side I saw this log:\r\n\r\n> {\"asctime\": \"2024-04-25 09:11:32,833\", \"level\": \"ERROR\", \"name\": \"livekit.agents\", \"message\": \"livekit_api::signal_client::signal_stream:178:livekit_api::signal_client::signal_stream - unhandled websocket message Err(Protocol(ResetWithoutClosingHandshake))\", \"job_id\": \"AJ_8oNxanmAa5c2\", \"pid\": 133}\r\n{\"asctime\": \"2024-04-25 09:11:32,837\", \"level\": \"DEBUG\", \"name\": \"livekit\", \"message\": \"livekit::rtc_engine:377:livekit::rtc_engine - engine task closed\"}\r\n{\"asctime\": \"2024-04-25 09:11:32,837\", \"level\": \"DEBUG\", \"name\": \"livekit\", \"message\": \"livekit::room:943:livekit::room - disconnected from room: UnknownReason\"}\r\n\r\n### **What I expected:**\r\nI can re-use the token from client to re-connect to the room.\r\nPlease help, \r\nThanks!",
+    "url": "https://github.com/livekit/agents/issues/256",
+    "label": null
+  },
+  {
+    "number": 268,
+    "title": "Bug in the examples/kitt",
+    "body": "After the latest updates, the example agent KITT does not run\r\n\r\n```\r\nException in inference 'SynthesizeStream' object has no attribute 'flush'\r\nTraceback (most recent call last):\r\n  File \"examples/kitt/inference_job.py\", line 111, in _run\r\n    await asyncio.gather(\r\n  File \"examples/kitt/inference_job.py\", line 132, in _llm_task\r\n    await self._tts_stream.flush()\r\n          ^^^^^^^^^^^^^^^^^^^^^^\r\nAttributeError: 'SynthesizeStream' object has no attribute 'flush'\r\n```",
+    "url": "https://github.com/livekit/agents/issues/268",
+    "label": null
+  },
+  {
+    "number": 269,
+    "title": "Feature Request: Node.js Environment Support for LiveKit Agents",
+    "body": "**Feature Details:**\r\n\r\n**Node.js SDK Integration:** Develop a dedicated Node.js SDK for LiveKit, providing developers with native access to LiveKit functionalities within their Node.js environments. This SDK should offer comprehensive coverage of LiveKit features, ensuring parity with existing SDKs.\r\nNPM Package: Publish the Node.js SDK as an NPM package, facilitating easy installation and dependency management for Node.js projects. This approach aligns with established Node.js development practices and enhances the accessibility of LiveKit within the Node.js ecosystem.\r\n**Comprehensive Documentation:** Furnish extensive documentation specifically tailored for Node.js developers, offering clear guidance on integrating and utilizing LiveKit functionalities within Node.js applications. This documentation should include code examples, best practices, and troubleshooting tips to streamline the development process.\r\nSupport for Node.js Frameworks: Ensure compatibility with popular Node.js frameworks such as Express.js, NestJS, and Fastify, enabling developers to seamlessly integrate LiveKit into their existing projects without friction. Compatibility with these frameworks enhances flexibility and fosters rapid development.\r\nEvent Emitters and Promises: Leverage Node.js conventions such as event emitters and promises to provide an intuitive and asynchronous programming model for interacting with LiveKit APIs. This approach aligns with Node.js development paradigms and enhances the developer experience when working with LiveKit in Node.js environments.\r\n**Community Engagement:** Actively engage with the Node.js developer community through forums, social media, and developer outreach programs to solicit feedback, address concerns, and foster a vibrant ecosystem around LiveKit in Node.js. Incorporating community feedback ensures that the Node.js SDK evolves in alignment with developer needs and industry trends.\r\n**Benefits:**\r\n\r\n**Expanded Developer Reach:** By supporting N",
+    "url": "https://github.com/livekit/agents/issues/269",
+    "label": null
+  },
+  {
+    "number": 273,
+    "title": "Guide for Integrating Local Microphone Input with Remote GPU Server for ML Processing in LiveKit",
+    "body": "What's the steps to connect local mic and also use remote GPU server that runs ML models (from the audio input from local mic) with livekit cloud or opensource server? ",
+    "url": "https://github.com/livekit/agents/issues/273",
+    "label": null
+  },
+  {
+    "number": 277,
+    "title": "ideo Frame Not Appearing in Livekit Playground on Mac M3 - Agent Status Stuck at \"Starting\"",
+    "body": "Hi I'm trying to test the playground with agent but the video frame doesn't appear somehow. It shows dark green color on the video section. And Agent connection True but agent status is \"starting\" forever.\r\nHere is my code for agent. I'm using mac M3.\r\nimport logging\r\nfrom livekit import rtc\r\nfrom livekit.agents import JobContext, JobRequest, WorkerOptions, cli\r\n\r\nWIDTH = 640\r\nHEIGHT = 480\r\n\r\nasync def entrypoint(job: JobContext):\r\n    room = job.room\r\n    source = rtc.VideoSource(WIDTH, HEIGHT)\r\n    track = rtc.LocalVideoTrack.create_video_track(\"video\", source)\r\n    options = rtc.TrackPublishOptions(source=rtc.TrackSource.SOURCE_CAMERA)\r\n    publication = await room.local_participant.publish_track(track, options)\r\n    logging.info(\"published track\", extra={\"track_sid\": publication.sid})\r\n\r\nasync def request_fnc(req: JobRequest) -> None:\r\n    logging.info(\"received request %s\", req)\r\n    await req.accept(entrypoint)\r\n\r\nif __name__ == \"__main__\":\r\n    from dotenv import load_dotenv\r\n    import os\r\n\r\n    load_dotenv()\r\n\r\n    LIVEKIT_API_KEY = os.getenv(\"LIVEKIT_API_KEY\")\r\n    LIVEKIT_API_SECRET = os.getenv(\"LIVEKIT_API_SECRET\")\r\n    LIVEKIT_URL = os.getenv(\"NEXT_PUBLIC_LIVEKIT_URL\")\r\n    cli.run_app(WorkerOptions(request_fnc=request_fnc, api_key=LIVEKIT_API_KEY, api_secret=LIVEKIT_API_SECRET,ws_url=LIVEKIT_URL))\r\n\r\nCould someone help?",
+    "url": "https://github.com/livekit/agents/issues/277",
+    "label": null
+  },
+  {
+    "number": 278,
+    "title": "The lastest livekit-plugins-silero~=0.4.dev1 doesn't yet publish to https://pypi.org/project/livekit-plugins-silero ! it causing \"TypeError: silero_vad() got an unexpected keyword argument 'use_onnx'\"",
+    "body": "[REDACTED_USER] [REDACTED_USER] [REDACTED_USER] [REDACTED_USER] [REDACTED_USER] ",
+    "url": "https://github.com/livekit/agents/issues/278",
+    "label": null
+  },
+  {
+    "number": 279,
+    "title": "Quickstart on the doc doesn't work. \"Waiting for audio track\" forever",
+    "body": "I was trying to learn the agent but even the quickstart on the documentation doesn't work. I have properly set the steps and also set up deepgram api key. The agent playground works and I was able to join the room and Agent connected true but status is \"starting\" forever and in audio section, \"Waiting for audio track\" forever. I'm using Mac M3 with chrome. \r\nPlease help me out. Thanks in advance.\r\n",
+    "url": "https://github.com/livekit/agents/issues/279",
+    "label": null
+  },
+  {
+    "number": 280,
+    "title": "OpenAI: Optional arguments for ai.callable results in Key Error",
+    "body": "When using an optional parameter with `[REDACTED_USER].ai_callable`, an \"Key Error: 'key'\" is thrown at https://github.com/livekit/agents/blob/main/livekit-plugins/livekit-plugins-openai/livekit/plugins/openai/llm.py#L169\r\n\r\n```python\r\n[REDACTED_USER].ai_callable(desc=\"Use this tool to find a flight.\")\r\nasync def search_flights(\r\n    self,\r\n    departure_id: Annotated[str, llm.TypeInfo(desc=\"Departure airport's IATA code or a city's Freebase ID starting with.\")],\r\n    passengers: Annotated[str, llm.TypeInfo(desc=\"Number of passenger to book the ticket for.\")] = \"1\"\r\n):\r\n```\r\n\r\nThis happens because the `args` do not contain the \"passenger\" argument. Using `arg.default` it would be possible to populate the default values beforehand.\r\n```python\r\nfnc = fncs[name]\r\n# validate args before calling fnc\r\nfor arg in fnc.args.values():\r\n    # Populate args with default values\r\n    if arg.name not in args and arg.default is not inspect.Parameter.empty:\r\n        args[arg.name] = arg.default\r\n\r\n    if arg.default is inspect.Parameter.empty and arg.name not in args:\r\n        logger.error(f\"missing required arg {arg.name} for ai_callable {name}\")\r\n        return\r\n```\r\n\r\n- Affected version `livekit-plugins-openai~=0.4.dev1`",
+    "url": "https://github.com/livekit/agents/issues/280",
+    "label": null
+  },
+  {
+    "number": 281,
+    "title": "what is the working version of example/kitt",
+    "body": "I am trying to local deploy the example/kitt  on branch neil/kitt, but it fails to work, the agent can join in the room, but when llm replies the text, the agent is not speaking. The log shows below, looks tts is not called in the process. Is the latest example/kitt working on branch neil/kitt? I know there are many changes in the kitt area. How can I get the working example kitt working? Thanks.\r\n![image](https://github.com/livekit/agents/assets/59191430/5f58d109-baa3-44e5-a871-93c12e47673a)\r\n![Uploading image (1).png…]()\r\n",
+    "url": "https://github.com/livekit/agents/issues/281",
+    "label": null
+  },
+  {
+    "number": 284,
+    "title": "Minimal Assistant Download Files error",
+    "body": "I get the following onnx error when trying to download files. Please help\r\n\r\n➜ python minimal_assistant.py download-files\r\nUsing cache found in /Users/sajjadk/.cache/torch/hub/snakers4_silero-vad_master\r\nTraceback (most recent call last):\r\n  File \"/Users/sajjadk/dev/onset_assist/agents/examples/voice-assistant/minimal_assistant.py\", line 43, in <module>\r\n    cli.run_app(WorkerOptions(request_fnc))\r\n  File \"/Users/sajjadk/dev/onset_assist/agents/myenv/lib/python3.10/site-packages/livekit/agents/cli/cli.py\", line 127, in run_app\r\n    cli()\r\n  File \"/Users/sajjadk/dev/onset_assist/agents/myenv/lib/python3.10/site-packages/click/core.py\", line 1157, in __call__\r\n    return self.main(*args, **kwargs)\r\n  File \"/Users/sajjadk/dev/onset_assist/agents/myenv/lib/python3.10/site-packages/click/core.py\", line 1078, in main\r\n    rv = self.invoke(ctx)\r\n  File \"/Users/sajjadk/dev/onset_assist/agents/myenv/lib/python3.10/site-packages/click/core.py\", line 1688, in invoke\r\n    return _process_result(sub_ctx.command.invoke(sub_ctx))\r\n  File \"/Users/sajjadk/dev/onset_assist/agents/myenv/lib/python3.10/site-packages/click/core.py\", line 1434, in invoke\r\n    return ctx.invoke(self.callback, **ctx.params)\r\n  File \"/Users/sajjadk/dev/onset_assist/agents/myenv/lib/python3.10/site-packages/click/core.py\", line 783, in invoke\r\n    return __callback(*args, **kwargs)\r\n  File \"/Users/sajjadk/dev/onset_assist/agents/myenv/lib/python3.10/site-packages/livekit/agents/cli/cli.py\", line 124, in download_files\r\n    plugin.download_files()\r\n  File \"/Users/sajjadk/dev/onset_assist/agents/myenv/lib/python3.10/site-packages/livekit/plugins/silero/__init__.py\", line 29, in download_files\r\n    _ = torch.hub.load(\r\n  File \"/Users/sajjadk/dev/onset_assist/agents/myenv/lib/python3.10/site-packages/torch/hub.py\", line 568, in load\r\n    model = _load_local(repo_or_dir, model, *args, **kwargs)\r\n  File \"/Users/sajjadk/dev/onset_assist/agents/myenv/lib/python3.10/site-packages/torch/hub.py\", line 597, in _load_loc",
+    "url": "https://github.com/livekit/agents/issues/284",
+    "label": null
+  },
+  {
+    "number": 286,
+    "title": "elevenlabs-plugin: \"cloned\" + \"professional\" voices not working",
+    "body": "With the minimal_assistant.py example, the above categories of voices don't seem to generate output properly. Instead it seems to hang for long periods of time.\r\n\r\nAm seeing LLM chat completion requests completing successfully, which seems to suggest that STT and OpenAI are working, but no audio output.\r\n\r\nI'm using a Macbook with M1 / Ventura 13.0.1, running Python 3.12.\r\n\r\nelevenlabs-plugin is working correctly with \"premade\" voices, and also with OpenAI's TTS (though it doesn't support streaming)\r\n\r\nExamples of non-working code:\r\n\r\n```\r\nVoice = elevenlabs.Voice(\r\n    id=MY_VOICE_ID,\r\n    name=\"Voice Name\",\r\n    category=\"professional\",\r\n    settings=elevenlabs.VoiceSettings(\r\n        stability=0.60, similarity_boost=1.0\r\n    )\r\n)\r\n\r\nassistant = VoiceAssistant(\r\n  vad=silero.VAD(),\r\n  stt=deepgram.STT(),\r\n  llm=openai.LLM(),\r\n  tts=elevenlabs.TTS(voice=Voice),\r\n  chat_ctx=initial_ctx,\r\n)\r\nassistant.start(ctx.room)\r\n\r\n```\r\n\r\nAs well as:\r\n\r\n```\r\nVoice = elevenlabs.Voice(\r\n    id=MY_VOICE_ID,\r\n    name=\"Voice Name\",\r\n    category=\"cloned\",\r\n    settings=elevenlabs.VoiceSettings(\r\n        stability=0.60, similarity_boost=1.0\r\n    )\r\n)\r\n\r\nassistant = VoiceAssistant(\r\n  vad=silero.VAD(),\r\n  stt=deepgram.STT(),\r\n  llm=openai.LLM(),\r\n  tts=elevenlabs.TTS(voice=Voice),\r\n  chat_ctx=initial_ctx,\r\n)\r\nassistant.start(ctx.room)\r\n\r\n```\r\n\r\nWhat I'm seeing in logs from agent running locally:\r\n\r\n```\r\n2024-05-14 01:56:21,398 INFO  httpx  HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\"\t  job_id=AJ_oiddbfaSEWxh pid=56250\r\n2024-05-14 01:56:22,141 INFO  httpx  HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\"\t  job_id=AJ_oiddbfaSEWxh pid=56250\r\n2024-05-14 01:56:23,720 ERROR  livekit.plugins.elevenlabs  11labs connection failed\r\nTraceback (most recent call last):\r\n  File \"/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/livekit/plugins/elevenlabs/tts.py\", line 365, in _run_ws\r\n    await asyncio.g",
+    "url": "https://github.com/livekit/agents/issues/286",
+    "label": null
+  },
+  {
+    "number": 287,
+    "title": "minimal_assistant - \"agent_started_speaking\" event only triggered in debug mode",
+    "body": "From the below lines in the [VoiceAssistant](https://github.com/livekit/agents/blob/4ca8ff69317e54d65fb8a20f7ff7743627d486fa/livekit-agents/livekit/agents/voice_assistant/assistant.py#L809) class:\r\n\r\n```\r\nasync for buf in po_rx:\r\n    if first_frame and self._opts.debug:\r\n        self._agent_started_speaking()\r\n        first_frame = False\r\n```\r\n\r\nIt looks like \"agent_started_speaking\" events are only triggered in debug mode. I've confirmed this locally on my end.\r\n\r\nBubbling this up in case this is isn't the intended behavior.\r\n",
+    "url": "https://github.com/livekit/agents/issues/287",
+    "label": null
+  },
+  {
+    "number": 289,
+    "title": "TTS Steaming is Broken for livekit-plugins-elevenlabs v0.4.0",
+    "body": "\r\nThis is a more clear description + RCA of #279 \r\n\r\nI think the issue is related to the TTS streaming implementation of livekit-plugins-elevenlabs. The reason I think that is because when I comment out [this code](https://github.com/livekit/agents/blob/main/livekit-agents/livekit/agents/voice_assistant/assistant.py#L204) from the assistant.py code, the very first assistant.say call is sent down to the agent playground.\r\n\r\nDebugging [further](https://github.com/livekit/agents/blob/main/livekit-agents/livekit/agents/voice_assistant/assistant.py#L755), I was able to verify that OpenAI is sending down the correct response to voices, but it wasn't getting streamed as audio to the playground.\r\n\r\nI also tried downgrading to all the 0.4.0 dev versions, and none of them fixed the issue. 0.3.0 didn't work at all with the other packages.\r\n\r\nThe product code I'm using is the [official agents quickstart guide](https://docs.livekit.io/agents/quickstart/).",
+    "url": "https://github.com/livekit/agents/issues/289",
+    "label": null
+  },
+  {
+    "number": 293,
+    "title": "VADEventType error",
+    "body": "When I was running the worker locally, I encountered an issue where it was impossible to conduct agent conversations. After debugging, it was discovered that within the \"silero/vad.py\" file, the method \"_dispatch_event\" consistently failed to create \"agents.vad.VADEvent\".\r\n\r\nSubsequently, the issue was identified to be related to the VADEventType, as illustrated in the figure.\r\nwait for help [REDACTED_USER]\r\n\r\n![问题图1](https://github.com/livekit/agents/assets/43946740/6aec3277-c5cc-461c-9929-9abe8af099e5)\r\n![image](https://github.com/livekit/agents/assets/43946740/12bd60f4-5b25-4c1a-af08-993c63b07d08)\r\n![image](https://github.com/livekit/agents/assets/43946740/e7019300-d2e2-444a-b8d7-38c6e1650492)\r\n",
+    "url": "https://github.com/livekit/agents/issues/293",
+    "label": null
+  }
+]

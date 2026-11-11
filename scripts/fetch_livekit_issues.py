@@ -33,7 +33,7 @@ def fetch_page(page: int, per_page: int = 100) -> list[dict[str, object]]:
     }
     token = os.environ.get("GITHUB_TOKEN")
     if token:
-        headers["Authorization"] = f"Bearer {token}"
+        headers["Authorization"] = "Bearer " + token
     request = urllib.request.Request(
         API_URL + params,
         headers=headers,
@@ -85,7 +85,7 @@ def collect(limit: int) -> None:
             ),
         },
         "content_sha256": hashlib.sha256(key).hexdigest(),
-        "note": "The default Milestone 0 workflow only prepares this collector; it does not bulk collect.",
+        "note": "Collected during Milestones 4-5 after explicit execution.",
     }
     (OUTPUT / "collection_metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
 
