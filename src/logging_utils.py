@@ -63,6 +63,7 @@ class DiagnosticEntry:
     # Counters / metadata
     retries: int = 0
     decision: str = ""
+    failure_reason: str = ""
     wall_clock_start: str = field(default_factory=now_iso_hires)
 
     @property

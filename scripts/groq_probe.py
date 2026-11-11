@@ -29,7 +29,7 @@ async def run_probe(
     """
     from groq import AsyncGroq  # type: ignore[import]
 
-    client = AsyncGroq(api_key=api_key)
+    client = AsyncGroq(api_key=api_key, max_retries=0)
     project_root = Path(__file__).resolve().parents[1]
     jsonl_path = project_root / "raw_headers.jsonl"
 

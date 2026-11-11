@@ -45,10 +45,12 @@ class GroqProvider(ModelProvider):
             raise ProviderError(
                 "The official groq package is not installed", ErrorKind.PERMANENT
             ) from exc
-        self._client = AsyncGroq(api_key=self._api_key)
-        # F-04: captured response headers from most recent stream() call
+        self._client = AsyncGroq(api_key=self._api_key, max_retries=0)
+        # Request-scoped metadata storage: request_id -> dict
+        self._request_metadata: dict[str, dict] = {}
+        # F-04: captured response headers from most recent stream() call (backward compatibility)
         self._last_headers: dict[str, str] = {}
-        # F-05: captured token usage from most recent stream() call
+        # F-05: captured token usage from most recent stream() call (backward compatibility)
         self._last_usage: dict | None = None
 
     @property
@@ -65,10 +67,21 @@ class GroqProvider(ModelProvider):
         """Return token usage captured from the most recent stream() call."""
         return self._last_usage
 
+    def get_request_metadata(self, request_id: str) -> dict:
+        """Return request-scoped metadata without removing it."""
+        return self._request_metadata.get(request_id, {})
+
+    def pop_request_metadata(self, request_id: str) -> dict:
+        """Return and remove request-scoped metadata (prevents cross-request leakage)."""
+        return self._request_metadata.pop(request_id, {})
+
     async def stream(self, request: GenerationRequest) -> AsyncIterator[str]:
         # Reset per-call state
         self._last_headers = {}
         self._last_usage = None
+        call_usage: dict | None = None
+        call_headers: dict[str, str] = {}
+        finish_reason: str | None = None
 
         try:
             # For openai/gpt-oss-* models on Groq:
@@ -92,14 +105,18 @@ class GroqProvider(ModelProvider):
             async for chunk in stream_obj:
                 # Capture usage from the final chunk (available without stream_options)
                 if getattr(chunk, "usage", None) is not None:
-                    self._last_usage = {
+                    call_usage = {
                         "prompt_tokens": chunk.usage.prompt_tokens,
                         "completion_tokens": chunk.usage.completion_tokens,
                     }
+                    self._last_usage = call_usage
 
                 choices = getattr(chunk, "choices", None)
                 if not choices:
                     continue
+                fr = getattr(choices[0], "finish_reason", None)
+                if fr:
+                    finish_reason = fr
                 delta = getattr(choices[0], "delta", None)
                 text = getattr(delta, "content", None) if delta else None
                 if text:
@@ -114,13 +131,21 @@ class GroqProvider(ModelProvider):
                     raw_headers = stream_obj._response.headers
 
                 if raw_headers is not None:
-                    self._last_headers = {
+                    call_headers = {
                         k.lower(): v
                         for k, v in raw_headers.items()
                         if k.lower() in _RATELIMIT_HEADERS
                     }
+                    self._last_headers = call_headers
             except AttributeError:
                 pass
+
+            # Store in request-scoped container
+            self._request_metadata[request.request_id] = {
+                "usage": call_usage,
+                "headers": call_headers,
+                "finish_reason": finish_reason,
+            }
 
         except asyncio.TimeoutError as exc:
             raise ProviderError("Groq request timed out", ErrorKind.TIMEOUT) from exc
