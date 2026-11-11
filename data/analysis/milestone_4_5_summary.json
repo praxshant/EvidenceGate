@@ -1,0 +1,101 @@
+{
+  "retrieval_recall": {
+    "A": {
+      "gold_evidence_eligible": 15,
+      "gold_evidence_recalled": 10,
+      "recall_percent": 66.7
+    },
+    "B": {
+      "gold_evidence_eligible": 15,
+      "gold_evidence_recalled": 7,
+      "recall_percent": 46.7
+    },
+    "C": {
+      "gold_evidence_eligible": 15,
+      "gold_evidence_recalled": 9,
+      "recall_percent": 60.0
+    }
+  },
+  "scenario_summary": [
+    {
+      "scenario": "steady_load",
+      "requests": 20,
+      "success_percent": 45.0,
+      "rate_limited_percent": 0.0,
+      "timeout_percent": 0.0,
+      "ttft_p50_ms": 2000.3,
+      "ttft_p95_ms": 2084.7,
+      "ttft_p99_ms": 2087.1,
+      "total_p50_ms": 2104.5,
+      "total_p95_ms": 2244.2,
+      "total_p99_ms": 2254.6
+    },
+    {
+      "scenario": "sudden_burst",
+      "requests": 20,
+      "success_percent": 45.0,
+      "rate_limited_percent": 0.0,
+      "timeout_percent": 0.0,
+      "ttft_p50_ms": 2104.3,
+      "ttft_p95_ms": 2234.1,
+      "ttft_p99_ms": 2314.3,
+      "total_p50_ms": 2246.1,
+      "total_p95_ms": 2402.6,
+      "total_p99_ms": 2404.6
+    },
+    {
+      "scenario": "sustained_overload",
+      "requests": 50,
+      "success_percent": 10.0,
+      "rate_limited_percent": 82.0,
+      "timeout_percent": 0.0,
+      "ttft_p50_ms": 2080.6,
+      "ttft_p95_ms": 2096.8,
+      "ttft_p99_ms": 2096.8,
+      "total_p50_ms": 56.1,
+      "total_p95_ms": 2175.5,
+      "total_p99_ms": 2423.8
+    },
+    {
+      "scenario": "per_minute_limit_halved",
+      "requests": 20,
+      "success_percent": 10.0,
+      "rate_limited_percent": 70.0,
+      "timeout_percent": 0.0,
+      "ttft_p50_ms": 2008.9,
+      "ttft_p95_ms": 2026.4,
+      "ttft_p99_ms": 2026.4,
+      "total_p50_ms": 60.5,
+      "total_p95_ms": 2139.6,
+      "total_p99_ms": 2333.9
+    },
+    {
+      "scenario": "daily_budget_exhausted",
+      "requests": 15,
+      "success_percent": 20.0,
+      "rate_limited_percent": 26.7,
+      "timeout_percent": 0.0,
+      "ttft_p50_ms": 1988.0,
+      "ttft_p95_ms": 2093.9,
+      "ttft_p99_ms": 2093.9,
+      "total_p50_ms": 2050.5,
+      "total_p95_ms": 2179.6,
+      "total_p99_ms": 2422.5
+    }
+  ],
+  "results_rows": 198,
+  "livekit_records": 100,
+  "real_groq_measurements": {
+    "requests": 3,
+    "ttft_p50_ms": 1873.9,
+    "ttft_p95_ms": 1873.9,
+    "total_p50_ms": 1184.3,
+    "total_p95_ms": 2176.6
+  },
+  "standin_calibration": {
+    "calibration_status": "calibrated_from_real_groq",
+    "base_delay_seconds": 1.874,
+    "inter_chunk_seconds": 0.002,
+    "jitter_seconds": 0.1874
+  }
+}
