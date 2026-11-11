@@ -1,101 +1,377 @@
 {
   "retrieval_recall": {
     "A": {
-      "gold_evidence_eligible": 15,
+      "answerable_questions": 10,
+      "answerable_recalled": 6,
+      "answerable_recall_percent": 60.0,
+      "partially_supported_questions": 5,
+      "partially_supported_recalled": 4,
+      "partially_supported_recall_percent": 80.0,
+      "gold_evidence_questions": 15,
       "gold_evidence_recalled": 10,
-      "recall_percent": 66.7
+      "gold_evidence_recall_percent": 66.7,
+      "note": "Recall is question-level (>=1 passage matches gold paper+page+text). Unanswerable questions (q16-q20) have no gold passage and are excluded."
     },
     "B": {
-      "gold_evidence_eligible": 15,
+      "answerable_questions": 10,
+      "answerable_recalled": 5,
+      "answerable_recall_percent": 50.0,
+      "partially_supported_questions": 5,
+      "partially_supported_recalled": 2,
+      "partially_supported_recall_percent": 40.0,
+      "gold_evidence_questions": 15,
       "gold_evidence_recalled": 7,
-      "recall_percent": 46.7
+      "gold_evidence_recall_percent": 46.7,
+      "note": "Recall is question-level (>=1 passage matches gold paper+page+text). Unanswerable questions (q16-q20) have no gold passage and are excluded."
     },
     "C": {
-      "gold_evidence_eligible": 15,
+      "answerable_questions": 10,
+      "answerable_recalled": 7,
+      "answerable_recall_percent": 70.0,
+      "partially_supported_questions": 5,
+      "partially_supported_recalled": 2,
+      "partially_supported_recall_percent": 40.0,
+      "gold_evidence_questions": 15,
       "gold_evidence_recalled": 9,
-      "recall_percent": 60.0
+      "gold_evidence_recall_percent": 60.0,
+      "note": "Recall is question-level (>=1 passage matches gold paper+page+text). Unanswerable questions (q16-q20) have no gold passage and are excluded."
+    }
+  },
+  "benchmark_accuracy": {
+    "A": {
+      "answerable_accuracy": {
+        "total": 10,
+        "ok": 4,
+        "accuracy_percent": 40.0
+      },
+      "partially_supported_accuracy": {
+        "total": 5,
+        "ok": 4,
+        "accuracy_percent": 80.0
+      },
+      "unanswerable_refusal_rate": {
+        "total": 5,
+        "ok": 5,
+        "accuracy_percent": 100.0
+      },
+      "note": "Accuracy = status=='ok' / total for that category. For unanswerable, 'ok' means EvidenceGate correctly refused."
+    },
+    "B": {
+      "answerable_accuracy": {
+        "total": 10,
+        "ok": 3,
+        "accuracy_percent": 30.0
+      },
+      "partially_supported_accuracy": {
+        "total": 5,
+        "ok": 2,
+        "accuracy_percent": 40.0
+      },
+      "unanswerable_refusal_rate": {
+        "total": 5,
+        "ok": 5,
+        "accuracy_percent": 100.0
+      },
+      "note": "Accuracy = status=='ok' / total for that category. For unanswerable, 'ok' means EvidenceGate correctly refused."
+    },
+    "C": {
+      "answerable_accuracy": {
+        "total": 10,
+        "ok": 4,
+        "accuracy_percent": 40.0
+      },
+      "partially_supported_accuracy": {
+        "total": 5,
+        "ok": 2,
+        "accuracy_percent": 40.0
+      },
+      "unanswerable_refusal_rate": {
+        "total": 5,
+        "ok": 5,
+        "accuracy_percent": 100.0
+      },
+      "note": "Accuracy = status=='ok' / total for that category. For unanswerable, 'ok' means EvidenceGate correctly refused."
     }
   },
   "scenario_summary": [
     {
       "scenario": "steady_load",
-      "requests": 20,
-      "success_percent": 45.0,
+      "requests_total": 20,
+      "requests_ok": 10,
+      "requests_rate_limited": 0,
+      "requests_timeout": 0,
+      "requests_error": 10,
+      "gated_pipeline_success_percent": 50.0,
       "rate_limited_percent": 0.0,
       "timeout_percent": 0.0,
-      "ttft_p50_ms": 2000.3,
-      "ttft_p95_ms": 2084.7,
-      "ttft_p99_ms": 2087.1,
-      "total_p50_ms": 2104.5,
-      "total_p95_ms": 2244.2,
-      "total_p99_ms": 2254.6
+      "paired_population_n": 8,
+      "ttft_p50_ms": 6173.4,
+      "ttft_p95_ms": 10710.5,
+      "total_p50_ms": 6265.3,
+      "total_p95_ms": 11146.9,
+      "all_ok_total_p50_ms": 5374.0,
+      "all_ok_total_p95_ms": 11146.9,
+      "failed_duration_p50_ms": 4562.2,
+      "failed_duration_p95_ms": 11052.3,
+      "population_note": "ttft and total percentiles use paired rows (same N). all_ok_total includes refused requests that have no TTFT."
     },
     {
       "scenario": "sudden_burst",
-      "requests": 20,
-      "success_percent": 45.0,
+      "requests_total": 20,
+      "requests_ok": 10,
+      "requests_rate_limited": 0,
+      "requests_timeout": 0,
+      "requests_error": 10,
+      "gated_pipeline_success_percent": 50.0,
       "rate_limited_percent": 0.0,
       "timeout_percent": 0.0,
-      "ttft_p50_ms": 2104.3,
-      "ttft_p95_ms": 2234.1,
-      "ttft_p99_ms": 2314.3,
-      "total_p50_ms": 2246.1,
-      "total_p95_ms": 2402.6,
-      "total_p99_ms": 2404.6
+      "paired_population_n": 8,
+      "ttft_p50_ms": 9291.6,
+      "ttft_p95_ms": 11988.0,
+      "total_p50_ms": 9592.5,
+      "total_p95_ms": 12342.6,
+      "all_ok_total_p50_ms": 7447.6,
+      "all_ok_total_p95_ms": 12342.6,
+      "failed_duration_p50_ms": 5406.6,
+      "failed_duration_p95_ms": 11520.4,
+      "population_note": "ttft and total percentiles use paired rows (same N). all_ok_total includes refused requests that have no TTFT."
     },
     {
       "scenario": "sustained_overload",
-      "requests": 50,
-      "success_percent": 10.0,
+      "requests_total": 50,
+      "requests_ok": 6,
+      "requests_rate_limited": 41,
+      "requests_timeout": 0,
+      "requests_error": 3,
+      "gated_pipeline_success_percent": 12.0,
       "rate_limited_percent": 82.0,
       "timeout_percent": 0.0,
-      "ttft_p50_ms": 2080.6,
-      "ttft_p95_ms": 2096.8,
-      "ttft_p99_ms": 2096.8,
-      "total_p50_ms": 56.1,
-      "total_p95_ms": 2175.5,
-      "total_p99_ms": 2423.8
+      "paired_population_n": 2,
+      "ttft_p50_ms": 10244.1,
+      "ttft_p95_ms": 10952.8,
+      "total_p50_ms": 10545.7,
+      "total_p95_ms": 11398.3,
+      "all_ok_total_p50_ms": 43.2,
+      "all_ok_total_p95_ms": 11398.3,
+      "failed_duration_p50_ms": 42.6,
+      "failed_duration_p95_ms": 1409.3,
+      "population_note": "ttft and total percentiles use paired rows (same N). all_ok_total includes refused requests that have no TTFT."
     },
     {
       "scenario": "per_minute_limit_halved",
-      "requests": 20,
-      "success_percent": 10.0,
+      "requests_total": 20,
+      "requests_ok": 3,
+      "requests_rate_limited": 14,
+      "requests_timeout": 0,
+      "requests_error": 3,
+      "gated_pipeline_success_percent": 15.0,
       "rate_limited_percent": 70.0,
       "timeout_percent": 0.0,
-      "ttft_p50_ms": 2008.9,
-      "ttft_p95_ms": 2026.4,
-      "ttft_p99_ms": 2026.4,
-      "total_p50_ms": 60.5,
-      "total_p95_ms": 2139.6,
-      "total_p99_ms": 2333.9
+      "paired_population_n": 1,
+      "ttft_p50_ms": 7531.5,
+      "ttft_p95_ms": 7531.5,
+      "total_p50_ms": 7974.2,
+      "total_p95_ms": 7974.2,
+      "all_ok_total_p50_ms": 46.1,
+      "all_ok_total_p95_ms": 7974.2,
+      "failed_duration_p50_ms": 48.6,
+      "failed_duration_p95_ms": 3639.5,
+      "population_note": "ttft and total percentiles use paired rows (same N). all_ok_total includes refused requests that have no TTFT."
     },
     {
       "scenario": "daily_budget_exhausted",
-      "requests": 15,
-      "success_percent": 20.0,
+      "requests_total": 15,
+      "requests_ok": 4,
+      "requests_rate_limited": 4,
+      "requests_timeout": 0,
+      "requests_error": 7,
+      "gated_pipeline_success_percent": 26.7,
       "rate_limited_percent": 26.7,
       "timeout_percent": 0.0,
-      "ttft_p50_ms": 1988.0,
-      "ttft_p95_ms": 2093.9,
-      "ttft_p99_ms": 2093.9,
-      "total_p50_ms": 2050.5,
-      "total_p95_ms": 2179.6,
-      "total_p99_ms": 2422.5
+      "paired_population_n": 3,
+      "ttft_p50_ms": 10195.0,
+      "ttft_p95_ms": 10829.7,
+      "total_p50_ms": 10633.5,
+      "total_p95_ms": 10988.5,
+      "all_ok_total_p50_ms": 10633.5,
+      "all_ok_total_p95_ms": 10988.5,
+      "failed_duration_p50_ms": 3317.3,
+      "failed_duration_p95_ms": 8553.3,
+      "population_note": "ttft and total percentiles use paired rows (same N). all_ok_total includes refused requests that have no TTFT."
     }
   ],
-  "results_rows": 198,
-  "livekit_records": 100,
-  "real_groq_measurements": {
-    "requests": 3,
-    "ttft_p50_ms": 1873.9,
-    "ttft_p95_ms": 1873.9,
-    "total_p50_ms": 1184.3,
-    "total_p95_ms": 2176.6
+  "retry_comparison": {
+    "retry_baseline_0_retries": {
+      "requests": 20,
+      "successes": 4,
+      "success_rate_percent": 20.0,
+      "total_attempts": 20,
+      "total_p50_ms": 48.7,
+      "total_p95_ms": 1562.8
+    },
+    "retry_amplified_3_retries": {
+      "requests": 20,
+      "successes": 3,
+      "success_rate_percent": 15.0,
+      "total_attempts": 66,
+      "total_p50_ms": 836.6,
+      "total_p95_ms": 7903.2
+    },
+    "retry_backoff_jitter": {
+      "requests": 20,
+      "successes": 3,
+      "success_rate_percent": 15.0,
+      "total_attempts": 66,
+      "total_p50_ms": 851.7,
+      "total_p95_ms": 7909.3
+    },
+    "amplification_factor_attempts": 3.3
   },
+  "real_groq_measurements": {
+    "requests_real": 5,
+    "requests_with_ttft": 5,
+    "paired_ttft_p50_ms": 2641.1,
+    "paired_ttft_p95_ms": 14884.1,
+    "paired_total_p50_ms": 2753.3,
+    "paired_total_p95_ms": 14898.3,
+    "all_real_total_p50_ms": 2753.3,
+    "all_real_total_p95_ms": 14898.3,
+    "tokens_in_sum": 10728,
+    "tokens_out_sum": 488,
+    "latency_anomalies": [],
+    "population_note": "paired_* uses only rows where both first_token_ms and total_ms are non-empty. all_real_total includes all real rows. latency_anomalies lists rows where total_ms < first_token_ms."
+  },
+  "header_reconciliation": [
+    {
+      "request_id": "groq-probe-q01",
+      "tokens_in": 2186,
+      "tokens_out": 100,
+      "total_tokens_used": 2286,
+      "header_remaining_tokens": "5714",
+      "header_limit_tokens": "8000",
+      "header_reset_tokens": "17.145s",
+      "header_remaining_requests": "999",
+      "header_reset_requests": "1m26.4s",
+      "note": "header_remaining_tokens reflects Groq's instantaneous TPM bucket state at response time, which includes per-minute refill. Direct subtraction from limit is not meaningful without knowing the elapsed refill interval. Groq docs do not publish the exact refill equation."
+    },
+    {
+      "request_id": "groq-probe-q01",
+      "tokens_in": 2186,
+      "tokens_out": 100,
+      "total_tokens_used": 2286,
+      "header_remaining_tokens": "5714",
+      "header_limit_tokens": "8000",
+      "header_reset_tokens": "17.145s",
+      "header_remaining_requests": "999",
+      "header_reset_requests": "1m26.4s",
+      "note": "header_remaining_tokens reflects Groq's instantaneous TPM bucket state at response time, which includes per-minute refill. Direct subtraction from limit is not meaningful without knowing the elapsed refill interval. Groq docs do not publish the exact refill equation."
+    },
+    {
+      "request_id": "groq-probe-q03",
+      "tokens_in": 1781,
+      "tokens_out": 100,
+      "total_tokens_used": 1881,
+      "header_remaining_tokens": "4508",
+      "header_limit_tokens": "8000",
+      "header_reset_tokens": "26.19s",
+      "header_remaining_requests": "998",
+      "header_reset_requests": "2m52.8s",
+      "note": "header_remaining_tokens reflects Groq's instantaneous TPM bucket state at response time, which includes per-minute refill. Direct subtraction from limit is not meaningful without knowing the elapsed refill interval. Groq docs do not publish the exact refill equation."
+    },
+    {
+      "request_id": "groq-probe-q03",
+      "tokens_in": 1781,
+      "tokens_out": 100,
+      "total_tokens_used": 1881,
+      "header_remaining_tokens": "4508",
+      "header_limit_tokens": "8000",
+      "header_reset_tokens": "26.19s",
+      "header_remaining_requests": "998",
+      "header_reset_requests": "2m52.8s",
+      "note": "header_remaining_tokens reflects Groq's instantaneous TPM bucket state at response time, which includes per-minute refill. Direct subtraction from limit is not meaningful without knowing the elapsed refill interval. Groq docs do not publish the exact refill equation."
+    },
+    {
+      "request_id": "groq-probe-q04",
+      "tokens_in": 2334,
+      "tokens_out": 100,
+      "total_tokens_used": 2434,
+      "header_remaining_tokens": "2806",
+      "header_limit_tokens": "8000",
+      "header_reset_tokens": "38.955s",
+      "header_remaining_requests": "997",
+      "header_reset_requests": "4m19.2s",
+      "note": "header_remaining_tokens reflects Groq's instantaneous TPM bucket state at response time, which includes per-minute refill. Direct subtraction from limit is not meaningful without knowing the elapsed refill interval. Groq docs do not publish the exact refill equation."
+    },
+    {
+      "request_id": "groq-probe-q04",
+      "tokens_in": 2334,
+      "tokens_out": 100,
+      "total_tokens_used": 2434,
+      "header_remaining_tokens": "2806",
+      "header_limit_tokens": "8000",
+      "header_reset_tokens": "38.955s",
+      "header_remaining_requests": "997",
+      "header_reset_requests": "4m19.2s",
+      "note": "header_remaining_tokens reflects Groq's instantaneous TPM bucket state at response time, which includes per-minute refill. Direct subtraction from limit is not meaningful without knowing the elapsed refill interval. Groq docs do not publish the exact refill equation."
+    },
+    {
+      "request_id": "groq-probe-q05",
+      "tokens_in": 2018,
+      "tokens_out": 88,
+      "total_tokens_used": 2106,
+      "header_remaining_tokens": "1128",
+      "header_limit_tokens": "8000",
+      "header_reset_tokens": "51.54s",
+      "header_remaining_requests": "996",
+      "header_reset_requests": "5m45.6s",
+      "note": "header_remaining_tokens reflects Groq's instantaneous TPM bucket state at response time, which includes per-minute refill. Direct subtraction from limit is not meaningful without knowing the elapsed refill interval. Groq docs do not publish the exact refill equation."
+    },
+    {
+      "request_id": "groq-probe-q05",
+      "tokens_in": 2018,
+      "tokens_out": 88,
+      "total_tokens_used": 2106,
+      "header_remaining_tokens": "1128",
+      "header_limit_tokens": "8000",
+      "header_reset_tokens": "51.54s",
+      "header_remaining_requests": "996",
+      "header_reset_requests": "5m45.6s",
+      "note": "header_remaining_tokens reflects Groq's instantaneous TPM bucket state at response time, which includes per-minute refill. Direct subtraction from limit is not meaningful without knowing the elapsed refill interval. Groq docs do not publish the exact refill equation."
+    },
+    {
+      "request_id": "groq-probe-q08",
+      "tokens_in": 2409,
+      "tokens_out": 100,
+      "total_tokens_used": 2509,
+      "header_remaining_tokens": "904",
+      "header_limit_tokens": "8000",
+      "header_reset_tokens": "53.22s",
+      "header_remaining_requests": "995",
+      "header_reset_requests": "7m12s",
+      "note": "header_remaining_tokens reflects Groq's instantaneous TPM bucket state at response time, which includes per-minute refill. Direct subtraction from limit is not meaningful without knowing the elapsed refill interval. Groq docs do not publish the exact refill equation."
+    },
+    {
+      "request_id": "groq-probe-q08",
+      "tokens_in": 2409,
+      "tokens_out": 100,
+      "total_tokens_used": 2509,
+      "header_remaining_tokens": "904",
+      "header_limit_tokens": "8000",
+      "header_reset_tokens": "53.22s",
+      "header_remaining_requests": "995",
+      "header_reset_requests": "7m12s",
+      "note": "header_remaining_tokens reflects Groq's instantaneous TPM bucket state at response time, which includes per-minute refill. Direct subtraction from limit is not meaningful without knowing the elapsed refill interval. Groq docs do not publish the exact refill equation."
+    }
+  ],
   "standin_calibration": {
     "calibration_status": "calibrated_from_real_groq",
-    "base_delay_seconds": 1.874,
-    "inter_chunk_seconds": 0.002,
-    "jitter_seconds": 0.1874
-  }
+    "base_delay_seconds": 0.146,
+    "jitter_seconds": 12.113,
+    "inter_chunk_seconds": 0.0262,
+    "calibration_n": 5,
+    "calibration_note": "Calibrated from N=5 valid real Groq observations. mean_ttft=6202ms stdev_ttft=6056ms mean_gen=80ms. base_delay = mean - stdev. jitter = 2 * stdev."
+  },
+  "results_rows_total": 250,
+  "latency_anomalies_total": 0,
+  "livekit_records": 100
 }

@@ -1,8 +1,8 @@
 {
   "model": "stand-in-replay",
-  "base_delay_seconds": 1.874,
-  "jitter_seconds": 0.1874,
-  "inter_chunk_seconds": 0.002,
+  "base_delay_seconds": 0.146,
+  "jitter_seconds": 12.113,
+  "inter_chunk_seconds": 0.0262,
   "chunk_size": 32,
   "transient_failure_rate": 0.0,
   "timeout_rate": 0.0,
@@ -13,5 +13,7 @@
   "slowdown_per_concurrent": 0.01,
   "concurrency_limit": null,
   "calibration_status": "calibrated_from_real_groq",
+  "calibration_n": 5,
+  "calibration_note": "Calibrated from N=5 valid real Groq observations. mean_ttft=6202ms stdev_ttft=6056ms mean_gen=80ms. base_delay = mean - stdev. jitter = 2 * stdev.",
   "day_seconds": 86400
 }
