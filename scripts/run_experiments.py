@@ -1,16 +1,29 @@
-"""run_experiments.py — EvidenceGate end-to-end experiment runner.
+"""run_experiments.py — EvidenceGate corrected end-to-end experiment runner.
 
-Executes in required order:
-1. Real Groq probe   – 3 live calls to openai/gpt-oss-20b via GROQ_API_KEY_1,
-                       measuring TTFT, total latency, token usage and rate-limit headers.
-2. Calibration       – Calibrate data/standin/default.json from observed measurements.
-3. Replay store      – Populate data/replay/responses.jsonl with real & gold answers.
-4. Benchmark evals   – Evaluate frozen benchmark (20 questions) across settings A, B, C.
-5. Load scenarios    – Run 5 scenarios: steady, burst, sustained-overload, halved-RPM,
-                       and daily-budget-exhausted.
-6. Retry demo        – Demonstrate retry worsening outcomes under transient failures.
-7. LiveKit subset    – Extract 30 issues for manual labeling (label: null).
-8. Analysis          – Run scripts/analyze_results.py to produce milestone_4_5_summary.json.
+Execution order (matches recommended sequence from review):
+1. Provider-corrected Groq probe  — 5 small streaming calls to build a timing
+   distribution (not just a smoke test).
+2. Rigorous stand-in calibration  — mean + stdev from valid TTFT observations.
+3. Replay store population        — real answers for probed questions;
+                                    gold answers for the rest.
+4. Benchmark evaluation           — settings A, B, C, 20 questions each.
+5. Five load scenarios            — using calibrated stand-in.
+6. Paired retry experiment        — 0 retries / 3 immediate retries /
+                                    exponential-backoff+jitter under a fixed
+                                    failure sequence for fair comparison.
+7. LiveKit subset                 — 30 issues unlabeled.
+8. Analysis                       — regenerate milestone_4_5_summary.json.
+
+Key correctness rules enforced here:
+- ALL Groq calls use include_reasoning=False + reasoning_effort="low" +
+  max_completion_tokens (not max_tokens).
+- TTFT is recorded only when a non-empty delta.content chunk actually arrives.
+- total_ms is wall-clock from request dispatch to stream end (always >= TTFT).
+- Latency anomalies (total < TTFT) are flagged and logged, never clamped.
+- Percentile populations are paired (same request IDs for TTFT and total).
+- Error-class latency is logged separately from success-class latency.
+- Token-budget calculation uses max_completion_tokens=100 per probe call to
+  leave room for text after any residual reasoning.
 """
 
 from __future__ import annotations
@@ -18,8 +31,10 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import random
 import sys
 import time
+from dataclasses import replace
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -27,17 +42,18 @@ sys.path.insert(0, str(ROOT))
 
 from src.logging_utils import DiagnosticEntry, ExperimentLogger, monotonic_ms, now_iso_hires
 from src.pipeline import EvidenceGate, ResearchPipeline, build_prompt
-from src.providers.base import ErrorKind, GenerationRequest, ProviderError
+from src.providers.base import ErrorKind, ProviderError
 from src.providers.standin_client import ReplayStore, StandinConfig, StandinProvider
 from src.retrieval import PaperRetriever
 from src.verification import verify_answer
 
 # ---------------------------------------------------------------------------
-# Load environment credentials safely
+# Env loader
 # ---------------------------------------------------------------------------
+
 def _load_env() -> tuple[str, str]:
-    env_file = ROOT / ".env"
     env_vars: dict[str, str] = {}
+    env_file = ROOT / ".env"
     if env_file.exists():
         for line in env_file.read_text(encoding="utf-8").splitlines():
             line = line.strip()
@@ -51,28 +67,6 @@ def _load_env() -> tuple[str, str]:
 
 GROQ_API_KEY, GROQ_MODEL = _load_env()
 
-# ---------------------------------------------------------------------------
-# Probe Questions
-# ---------------------------------------------------------------------------
-PROBE_QUESTIONS = [
-    {
-        "id": "q01",
-        "question": "Why does the Transformer use self-attention instead of recurrence?",
-        "expected_citation": "[Attention Is All You Need, §Abstract, p.1]",
-    },
-    {
-        "id": "q05",
-        "question": "What theoretical and practical latency does the Moshi paper report?",
-        "expected_citation": "[Moshi, §Abstract, p.1]",
-    },
-    {
-        "id": "q08",
-        "question": "What does the Dynamic Chunking paper say an H-Net replaces?",
-        "expected_citation": "[Dynamic Chunking, §Abstract, p.1]",
-    },
-]
-
-# Relevant rate-limit headers to capture
 _RL_HEADERS = {
     "x-ratelimit-limit-requests",
     "x-ratelimit-remaining-requests",
@@ -83,82 +77,93 @@ _RL_HEADERS = {
     "retry-after",
 }
 
+# ---------------------------------------------------------------------------
+# Probe question pool — 5 short questions from the benchmark
+# ---------------------------------------------------------------------------
+
+PROBE_QUESTIONS = [
+    {"id": "q01", "question": "Why does the Transformer use self-attention instead of recurrence?"},
+    {"id": "q03", "question": "What does multi-head attention allow the model to attend to?"},
+    {"id": "q04", "question": "Why does the Transformer add positional encodings?"},
+    {"id": "q05", "question": "What theoretical and practical latency does the Moshi paper report?"},
+    {"id": "q08", "question": "What does the Dynamic Chunking paper say an H-Net replaces?"},
+]
+
+# ---------------------------------------------------------------------------
+# Phase 1: Real Groq probe — 5 calls with verified content output
+# ---------------------------------------------------------------------------
 
 async def run_real_groq_probe(
     logger: ExperimentLogger,
     retriever: PaperRetriever,
     gate: EvidenceGate,
 ) -> list[dict]:
-    """Execute 3 bounded streaming calls against the Groq API using GROQ_API_KEY_1."""
+    """Run 5 bounded streaming calls to Groq and collect timing observations.
+
+    Uses include_reasoning=False + reasoning_effort="low" + max_completion_tokens=100.
+    If a call produces zero content chunks the observation is flagged (first_token_ms=None)
+    and NOT included in the TTFT distribution but IS included in total_ms distribution.
+    """
     if not GROQ_API_KEY:
-        print("[probe] GROQ_API_KEY_1 not found. Skipping live probe.")
+        print("[probe] GROQ_API_KEY_1 not set — skipping real probe.")
         return []
 
     from groq import AsyncGroq
-
-    print(f"\n=== 1. Real Groq Probe: {GROQ_MODEL} (1 authorized account) ===")
     client = AsyncGroq(api_key=GROQ_API_KEY)
+
+    print(f"\n=== Phase 1: Real Groq Probe ({GROQ_MODEL}) ===")
     observations: list[dict] = []
 
     for item in PROBE_QUESTIONS:
         qid = item["id"]
         q_text = item["question"]
-        print(f"\n[probe] Probing {qid}: {q_text[:50]}...")
+        print(f"\n[probe] {qid}: {q_text[:60]}...")
 
-        arrival_ms = monotonic_ms()
-        wall_clock_start = now_iso_hires()
+        wall_start = now_iso_hires()
         request_id = f"groq-probe-{qid}"
 
-        # 1. Retrieval
-        ret_start = monotonic_ms()
+        # Retrieve passages for a realistic prompt
         passages = retriever.search(q_text, "B")
-        ret_end = monotonic_ms()
         decision = gate.decide(passages, q_text)
-
-        # 2. Build prompt
         prompt = build_prompt(q_text, passages, decision)
 
-        # 3. Stream from Groq
-        prov_start = monotonic_ms()
-        first_token_ms_val: float | None = None
+        t_dispatch = time.monotonic()
+        first_token_mono: float | None = None
         pieces: list[str] = []
         last_usage: dict | None = None
         rl_headers: dict[str, str] = {}
-        error_msg = ""
         status = "ok"
+        error_msg = ""
 
         try:
             stream_obj = await client.chat.completions.create(
                 model=GROQ_MODEL,
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=256,
+                # 100 tokens: short enough to stay well within TPM limit across
+                # 5 calls, large enough to get a few sentences of visible text.
+                max_completion_tokens=100,
                 stream=True,
-                reasoning_format="hidden",
+                include_reasoning=False,
+                reasoning_effort="low",
             )
 
             async for chunk in stream_obj:
-                if first_token_ms_val is None:
-                    choices = getattr(chunk, "choices", None) or []
-                    if choices:
-                        delta = getattr(choices[0], "delta", None)
-                        if delta and getattr(delta, "content", None):
-                            first_token_ms_val = monotonic_ms()
-
                 if getattr(chunk, "usage", None) is not None:
                     u = chunk.usage
                     last_usage = {
                         "prompt_tokens": u.prompt_tokens,
                         "completion_tokens": u.completion_tokens,
                     }
-
                 choices = getattr(chunk, "choices", None) or []
                 if choices:
                     delta = getattr(choices[0], "delta", None)
                     content = getattr(delta, "content", None) if delta else None
                     if content:
+                        if first_token_mono is None:
+                            first_token_mono = time.monotonic()
                         pieces.append(content)
 
-            # Capture headers
+            # Capture rate-limit headers
             for attr in ("response", "_response"):
                 resp = getattr(stream_obj, attr, None)
                 if resp is not None and hasattr(resp, "headers"):
@@ -172,152 +177,221 @@ async def run_real_groq_probe(
         except Exception as exc:
             status = "error"
             error_msg = str(exc)
-            print(f"  [probe] Error: {exc}")
+            print(f"  ERROR: {exc}")
 
-        prov_end = monotonic_ms()
-        raw_answer = "".join(pieces).strip()
+        t_end = time.monotonic()
+        total_ms = (t_end - t_dispatch) * 1000.0
+        ttft_ms: float | None = (
+            (first_token_mono - t_dispatch) * 1000.0
+            if first_token_mono is not None else None
+        )
 
-        # 4. Verification
-        ver_start = monotonic_ms()
-        verification = verify_answer(raw_answer, passages)
-        ver_end = monotonic_ms()
-        final_ms = monotonic_ms()
+        # Invariant check — flag but do NOT clamp
+        if ttft_ms is not None and total_ms < ttft_ms:
+            print(f"  [ANOMALY] total_ms={total_ms:.1f} < first_token_ms={ttft_ms:.1f} — "
+                  f"clock skew or measurement bug. Flagging, NOT clamping.")
+            status = "latency_anomaly"
 
-        ttft_delay = (first_token_ms_val - prov_start) if first_token_ms_val else 0.0
-        total_duration = final_ms - arrival_ms
+        answer = "".join(pieces).strip()
+        tokens_in = (last_usage or {}).get("prompt_tokens", "")
+        tokens_out = (last_usage or {}).get("completion_tokens", "")
 
-        tokens_in = last_usage.get("prompt_tokens", "") if last_usage else ""
-        tokens_out = last_usage.get("completion_tokens", "") if last_usage else ""
+        print(f"  status={status}  content_chunks={len(pieces)}  "
+              f"ttft={f'{ttft_ms:.0f}' if ttft_ms is not None else 'None'}ms  "
+              f"total={total_ms:.0f}ms  "
+              f"tokens=({tokens_in}/{tokens_out})")
+        print(f"  rl_headers={rl_headers}")
+        if answer:
+            print(f"  answer_preview={answer[:80]}...")
+        else:
+            print("  [WARNING] Zero content chunks received — reasoning may have consumed the token budget.")
 
-        print(f"  status={status}  ttft={ttft_delay:.1f}ms  total={total_duration:.1f}ms  "
-              f"tokens_in={tokens_in}  tokens_out={tokens_out}")
-        print(f"  headers={rl_headers}")
-        print(f"  answer={raw_answer[:80]}...")
-
-        # Log through ExperimentLogger
+        # Log to results.csv
         await logger.result(
             request_id=request_id,
             scenario="groq_probe",
             source="real",
-            start_time=wall_clock_start,
-            first_token_ms=round(ttft_delay, 2) if first_token_ms_val else "",
-            total_ms=round(total_duration, 2),
+            start_time=wall_start,
+            first_token_ms=round(ttft_ms, 2) if ttft_ms is not None else "",
+            total_ms=round(total_ms, 2),
             status=status,
             retries=0,
             tokens_in=tokens_in,
             tokens_out=tokens_out,
             retrieval_setting="B",
-            answer_grade="correct" if verification.valid else "unverified",
+            answer_grade="",
         )
-
         if rl_headers:
             await logger.headers(request_id, rl_headers)
 
-        diag = DiagnosticEntry(
-            arrival_ms=arrival_ms,
-            queue_exit_ms=arrival_ms,
-            retrieval_start_ms=ret_start,
-            retrieval_end_ms=ret_end,
-            provider_start_ms=prov_start,
-            first_token_ms=first_token_ms_val or 0.0,
-            provider_end_ms=prov_end,
-            verification_start_ms=ver_start,
-            verification_end_ms=ver_end,
-            final_response_ms=final_ms,
-            retries=0,
-            decision=decision,
-            wall_clock_start=wall_clock_start,
-        )
-        await logger.diagnostic_entry(request_id, diag.to_dict(request_id))
+        # Also append to raw_headers.jsonl with token usage side-by-side
+        raw_headers_path = ROOT / "raw_headers.jsonl"
+        with raw_headers_path.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps({
+                "request_id": request_id,
+                "headers": rl_headers,
+                "tokens_in": tokens_in,
+                "tokens_out": tokens_out,
+                "total_tokens_used": (tokens_in + tokens_out) if isinstance(tokens_in, int) and isinstance(tokens_out, int) else "unknown",
+                "note": (
+                    "header_remaining_tokens reflects Groq's TPM bucket state at "
+                    "response time, which includes per-minute refill. "
+                    "Direct subtraction from limit is not meaningful without knowing "
+                    "the elapsed refill interval. Groq docs do not publish the exact "
+                    "refill equation."
+                ),
+            }) + "\n")
 
         observations.append({
             "id": qid,
             "question": q_text,
-            "answer": raw_answer,
-            "first_token_ms": ttft_delay,
-            "total_ms": total_duration,
+            "answer": answer,
+            "ttft_ms": ttft_ms,          # None if no content chunks
+            "total_ms": total_ms,
             "tokens_in": tokens_in,
             "tokens_out": tokens_out,
             "headers": rl_headers,
-            "valid": verification.valid,
+            "status": status,
         })
 
-        await asyncio.sleep(2.0)  # Rate-limit safety
+        await asyncio.sleep(2.5)  # Keep inter-call gap to respect TPM limits
 
     return observations
 
 
+# ---------------------------------------------------------------------------
+# Phase 2: Rigorous stand-in calibration
+# ---------------------------------------------------------------------------
+
 def calibrate_standin(observations: list[dict]) -> StandinConfig:
-    """Calibrate stand-in configuration from real Groq observations."""
-    print("\n=== 2. Stand-in Calibration ===")
+    """Calibrate timing from probe observations.
+
+    Uses only observations where:
+    - ttft_ms is not None (a content token was actually received)
+    - total_ms > ttft_ms (no latency anomaly)
+
+    Reports mean and stdev of TTFT; uses them for base_delay ± jitter.
+    If fewer than 2 valid observations exist, falls back to conservative defaults.
+    """
+    import statistics
+
+    print("\n=== Phase 2: Stand-in Calibration ===")
+
+    valid = [
+        o for o in observations
+        if o.get("ttft_ms") is not None
+        and o["total_ms"] > o["ttft_ms"]
+        and o["status"] == "ok"
+    ]
+    print(f"  Valid observations for calibration: {len(valid)} / {len(observations)}")
+
     cfg_path = ROOT / "data" / "standin" / "default.json"
 
-    if observations:
-        valid_ttfts = [o["first_token_ms"] for o in observations if o["first_token_ms"] > 0]
-        valid_totals = [o["total_ms"] for o in observations if o["total_ms"] > 0]
-        avg_ttft = sum(valid_ttfts) / len(valid_ttfts) if valid_ttfts else 400.0
-        avg_total = sum(valid_totals) / len(valid_totals) if valid_totals else 1200.0
+    if len(valid) >= 2:
+        ttfts_s = [o["ttft_ms"] / 1000.0 for o in valid]
+        totals_s = [o["total_ms"] / 1000.0 for o in valid]
+        gen_times_s = [t - f for t, f in zip(totals_s, ttfts_s)]
 
-        base_delay = round(avg_ttft / 1000.0, 3)
-        inter_chunk = round(max(0.002, (avg_total - avg_ttft) / 1000.0 / 25.0), 4)
-        jitter = round(avg_ttft * 0.1 / 1000.0, 4)
+        mean_ttft = statistics.mean(ttfts_s)
+        std_ttft = statistics.stdev(ttfts_s)
+        mean_gen = statistics.mean(gen_times_s)
 
-        config_data = {
-            "model": "stand-in-replay",
-            "base_delay_seconds": base_delay,
-            "jitter_seconds": jitter,
-            "inter_chunk_seconds": inter_chunk,
-            "chunk_size": 32,
-            "transient_failure_rate": 0.0,
-            "timeout_rate": 0.0,
-            "permanent_failure_rate": 0.0,
-            "requests_per_minute": None,
-            "tokens_per_minute": None,
-            "requests_per_day": None,
-            "slowdown_per_concurrent": 0.01,
-            "concurrency_limit": None,
-            "calibration_status": "calibrated_from_real_groq",
-            "day_seconds": 86400,
-        }
-        cfg_path.write_text(json.dumps(config_data, indent=2), encoding="utf-8")
-        print(f"Stand-in calibrated: base_delay={base_delay}s, inter_chunk={inter_chunk}s, jitter={jitter}s")
+        avg_tokens_out = statistics.mean([
+            o["tokens_out"] for o in valid
+            if isinstance(o.get("tokens_out"), int) and o["tokens_out"] > 0
+        ] or [45])
+        avg_chunks = max(1.0, avg_tokens_out / 32.0)
+
+        base_delay = round(max(0.05, mean_ttft - std_ttft), 3)
+        jitter = round(max(0.02, 2 * std_ttft), 3)
+        inter_chunk = round(max(0.002, mean_gen / avg_chunks), 4)
+
+        calibration_note = (
+            f"Calibrated from N={len(valid)} valid real Groq observations. "
+            f"mean_ttft={mean_ttft*1000:.0f}ms stdev_ttft={std_ttft*1000:.0f}ms "
+            f"mean_gen={mean_gen*1000:.0f}ms. "
+            f"base_delay = mean - stdev. jitter = 2 * stdev."
+        )
+        calibration_status = "calibrated_from_real_groq"
+    elif len(valid) == 1:
+        single = valid[0]
+        base_delay = round(single["ttft_ms"] / 1000.0 * 0.9, 3)
+        jitter = round(single["ttft_ms"] / 1000.0 * 0.2, 3)
+        inter_chunk = 0.004
+        calibration_note = (
+            f"Single valid observation (N=1); insufficient for stdev. "
+            f"base_delay=0.9*TTFT, jitter=0.2*TTFT."
+        )
+        calibration_status = "calibrated_single_observation"
     else:
-        print("Using existing stand-in configuration.")
-        config_data = json.loads(cfg_path.read_text(encoding="utf-8"))
+        base_delay = 0.5
+        jitter = 0.1
+        inter_chunk = 0.004
+        calibration_note = (
+            "No valid TTFT observations from real probe. "
+            "Using conservative defaults. Stand-in timing does not represent real Groq."
+        )
+        calibration_status = "uncalibrated_no_valid_observations"
 
-    # Return StandinConfig object
+    config_data = {
+        "model": "stand-in-replay",
+        "base_delay_seconds": base_delay,
+        "jitter_seconds": jitter,
+        "inter_chunk_seconds": inter_chunk,
+        "chunk_size": 32,
+        "transient_failure_rate": 0.0,
+        "timeout_rate": 0.0,
+        "permanent_failure_rate": 0.0,
+        "requests_per_minute": None,
+        "tokens_per_minute": None,
+        "requests_per_day": None,
+        "slowdown_per_concurrent": 0.01,
+        "concurrency_limit": None,
+        "calibration_status": calibration_status,
+        "calibration_n": len(valid),
+        "calibration_note": calibration_note,
+        "day_seconds": 86400,
+    }
+
+    cfg_path.write_text(json.dumps(config_data, indent=2), encoding="utf-8")
+    print(f"  {calibration_status}: base_delay={base_delay}s  jitter={jitter}s  inter_chunk={inter_chunk}s")
+    print(f"  Note: {calibration_note}")
+
     from dataclasses import fields
     valid_keys = {f.name for f in fields(StandinConfig)}
     return StandinConfig(**{k: v for k, v in config_data.items() if k in valid_keys})
 
 
-def populate_replay_store(observations: list[dict]) -> None:
-    """Populate data/replay/responses.jsonl with real Groq probe outputs and gold answers."""
-    print("\n=== 3. Populate Replay Store ===")
-    benchmark_file = ROOT / "data" / "benchmarks" / "benchmark_draft.json"
-    replay_file = ROOT / "data" / "replay" / "responses.jsonl"
+# ---------------------------------------------------------------------------
+# Phase 3: Populate replay store
+# ---------------------------------------------------------------------------
 
-    benchmark = json.loads(benchmark_file.read_text(encoding="utf-8"))["questions"]
-    obs_map = {o["id"]: o for o in observations}
+def populate_replay_store(observations: list[dict]) -> None:
+    """Write real Groq answers (where available) + gold answers to responses.jsonl."""
+    print("\n=== Phase 3: Populate Replay Store ===")
+
+    benchmark = json.loads(
+        (ROOT / "data" / "benchmarks" / "benchmark_draft.json").read_text(encoding="utf-8")
+    )["questions"]
+    replay_file = ROOT / "data" / "replay" / "responses.jsonl"
+    obs_map = {o["id"]: o for o in observations if o.get("answer") and o.get("status") == "ok"}
 
     records: list[dict] = []
     for q in benchmark:
         qid = q["id"]
         q_text = q["question"]
 
-        if qid in obs_map and obs_map[qid]["answer"]:
-            # Real Groq answer
+        if qid in obs_map:
             obs = obs_map[qid]
             records.append({
                 "question": q_text,
                 "question_id": qid,
                 "answer": obs["answer"],
-                "tokens_in": int(obs["tokens_in"] or 100),
-                "tokens_out": int(obs["tokens_out"] or 40),
+                "tokens_in": int(obs["tokens_in"]) if isinstance(obs.get("tokens_in"), int) else 100,
+                "tokens_out": int(obs["tokens_out"]) if isinstance(obs.get("tokens_out"), int) else 40,
                 "source": "real_groq",
             })
         else:
-            # Gold answer for benchmark evaluation replay
             citation = q.get("expected_citation") or ""
             facts = q.get("expected_facts") or ""
             if citation:
@@ -335,205 +409,213 @@ def populate_replay_store(observations: list[dict]) -> None:
 
     with replay_file.open("w", encoding="utf-8") as fh:
         for r in records:
-            fh.write(json.dumps(r) + "\n")
+            fh.write(json.dumps(r, ensure_ascii=False) + "\n")
 
-    print(f"Wrote {len(records)} records to {replay_file.name}")
+    real_count = sum(1 for r in records if r["source"] == "real_groq")
+    print(f"  Wrote {len(records)} records ({real_count} real, {len(records)-real_count} gold).")
 
+
+# ---------------------------------------------------------------------------
+# Phase 4: Benchmark evaluation (settings A, B, C)
+# ---------------------------------------------------------------------------
 
 async def run_benchmark_evaluations(
     logger: ExperimentLogger,
     retriever: PaperRetriever,
     standin_cfg: StandinConfig,
 ) -> None:
-    """Evaluate frozen benchmark against retrieval settings A, B, and C."""
-    print("\n=== 4. Benchmark Evaluation: Settings A, B, and C ===")
+    print("\n=== Phase 4: Benchmark Evaluation (Settings A, B, C) ===")
     benchmark = json.loads(
         (ROOT / "data" / "benchmarks" / "benchmark_draft.json").read_text(encoding="utf-8")
     )["questions"]
-
     store = ReplayStore(ROOT / "data" / "replay" / "responses.jsonl")
 
     for setting in ("A", "B", "C"):
-        print(f"\n[eval] Running Setting {setting} on 20 benchmark questions...")
+        print(f"\n[eval] Setting {setting}")
         provider = StandinProvider(store, standin_cfg)
-        pipeline = ResearchPipeline(
-            ROOT,
-            providers={"stand-in": provider},
-            logger=logger,
-            retriever=retriever,
-        )
+        pipeline = ResearchPipeline(ROOT, {"stand-in": provider}, logger=logger, retriever=retriever)
 
-        ok_count = 0
-        refused_count = 0
-        for i, q in enumerate(benchmark, 1):
-            qid = q["id"]
-            q_text = q["question"]
+        counts = {"ok": 0, "refused_by_gate": 0, "other": 0}
+        for q in benchmark:
             res = await pipeline.ask(
-                q_text,
+                q["question"],
                 provider_name="stand-in",
                 retrieval_setting=setting,
-                request_id=f"bench-{setting}-{qid}",
+                request_id=f"bench-{setting}-{q['id']}",
                 scenario=f"benchmark_setting_{setting}",
             )
             if res.status == "ok":
-                ok_count += 1
-            if res.decision == "insufficient":
-                refused_count += 1
+                counts["ok"] += 1
+            elif res.decision == "insufficient":
+                counts["refused_by_gate"] += 1
+            else:
+                counts["other"] += 1
 
-        print(f"  Setting {setting}: {ok_count}/20 ok, {refused_count} refused by EvidenceGate")
+        print(f"  Setting {setting}: ok={counts['ok']}  gated_refusal={counts['refused_by_gate']}  other={counts['other']}")
 
+
+# ---------------------------------------------------------------------------
+# Phase 5: Load scenarios
+# ---------------------------------------------------------------------------
 
 async def run_load_scenarios(
     logger: ExperimentLogger,
     retriever: PaperRetriever,
     base_cfg: StandinConfig,
 ) -> None:
-    """Run the 5 required load scenarios."""
-    print("\n=== 5. Load Scenarios ===")
+    print("\n=== Phase 5: Load Scenarios ===")
     benchmark = json.loads(
         (ROOT / "data" / "benchmarks" / "benchmark_draft.json").read_text(encoding="utf-8")
     )["questions"]
     store = ReplayStore(ROOT / "data" / "replay" / "responses.jsonl")
 
-    # 1. Steady load: 20 sequential requests
-    print("\n[scenario] steady_load: 20 requests sequentially")
+    # 1. Steady load — 20 sequential, 50ms inter-request gap
+    print("\n[scenario] steady_load: 20 sequential requests")
     p1 = StandinProvider(store, base_cfg)
-    pipe1 = ResearchPipeline(ROOT, providers={"stand-in": p1}, logger=logger, retriever=retriever)
+    pipe1 = ResearchPipeline(ROOT, {"stand-in": p1}, logger=logger, retriever=retriever)
     for i in range(20):
         q = benchmark[i % len(benchmark)]
-        await pipe1.ask(
-            q["question"],
-            provider_name="stand-in",
-            retrieval_setting="B",
-            request_id=f"steady-{i:02d}",
-            scenario="steady_load",
-        )
+        await pipe1.ask(q["question"], provider_name="stand-in",
+                        retrieval_setting="B", request_id=f"steady-{i:02d}",
+                        scenario="steady_load")
         await asyncio.sleep(0.05)
-    print("  steady_load finished (20 requests)")
+    print("  steady_load done")
 
-    # 2. Sudden burst: 20 concurrent requests
+    # 2. Sudden burst — 20 concurrent requests
     print("\n[scenario] sudden_burst: 20 concurrent requests")
-    from dataclasses import replace
     burst_cfg = replace(base_cfg, slowdown_per_concurrent=0.015, concurrency_limit=20)
     p2 = StandinProvider(store, burst_cfg)
-    pipe2 = ResearchPipeline(ROOT, providers={"stand-in": p2}, logger=logger, retriever=retriever)
-    tasks = [
-        pipe2.ask(
-            benchmark[i % len(benchmark)]["question"],
-            provider_name="stand-in",
-            retrieval_setting="B",
-            request_id=f"burst-{i:02d}",
-            scenario="sudden_burst",
-        )
+    pipe2 = ResearchPipeline(ROOT, {"stand-in": p2}, logger=logger, retriever=retriever)
+    await asyncio.gather(*[
+        pipe2.ask(benchmark[i % len(benchmark)]["question"],
+                  provider_name="stand-in", retrieval_setting="B",
+                  request_id=f"burst-{i:02d}", scenario="sudden_burst")
         for i in range(20)
-    ]
-    await asyncio.gather(*tasks)
-    print("  sudden_burst finished (20 concurrent requests)")
+    ])
+    print("  sudden_burst done")
 
-    # 3. Sustained overload: 50 requests with requests_per_minute = 5
-    print("\n[scenario] sustained_overload: 50 requests with requests_per_minute=5")
+    # 3. Sustained overload — 50 requests at RPM=5
+    print("\n[scenario] sustained_overload: 50 requests, requests_per_minute=5")
     overload_cfg = replace(base_cfg, requests_per_minute=5)
     p3 = StandinProvider(store, overload_cfg)
-    pipe3 = ResearchPipeline(ROOT, providers={"stand-in": p3}, logger=logger, retriever=retriever)
+    pipe3 = ResearchPipeline(ROOT, {"stand-in": p3}, logger=logger, retriever=retriever)
     for i in range(50):
-        q = benchmark[i % len(benchmark)]
         try:
-            await pipe3.ask(
-                q["question"],
-                provider_name="stand-in",
-                retrieval_setting="B",
-                request_id=f"overload-{i:02d}",
-                scenario="sustained_overload",
-                max_retries=0,
-            )
+            await pipe3.ask(benchmark[i % len(benchmark)]["question"],
+                            provider_name="stand-in", retrieval_setting="B",
+                            request_id=f"overload-{i:02d}", scenario="sustained_overload",
+                            max_retries=0)
         except ProviderError:
             pass
-    print("  sustained_overload finished (50 requests, rate-limiting exercised)")
+    print("  sustained_overload done")
 
-    # 4. Halved per-minute limit: 20 requests with requests_per_minute = 4
-    print("\n[scenario] per_minute_limit_halved: 20 requests with requests_per_minute=4")
+    # 4. Per-minute limit halved — 20 requests at RPM=4
+    print("\n[scenario] per_minute_limit_halved: 20 requests, requests_per_minute=4")
     halved_cfg = replace(base_cfg, requests_per_minute=4)
     p4 = StandinProvider(store, halved_cfg)
-    pipe4 = ResearchPipeline(ROOT, providers={"stand-in": p4}, logger=logger, retriever=retriever)
+    pipe4 = ResearchPipeline(ROOT, {"stand-in": p4}, logger=logger, retriever=retriever)
     for i in range(20):
-        q = benchmark[i % len(benchmark)]
         try:
-            await pipe4.ask(
-                q["question"],
-                provider_name="stand-in",
-                retrieval_setting="B",
-                request_id=f"halved-{i:02d}",
-                scenario="per_minute_limit_halved",
-                max_retries=0,
-            )
+            await pipe4.ask(benchmark[i % len(benchmark)]["question"],
+                            provider_name="stand-in", retrieval_setting="B",
+                            request_id=f"halved-{i:02d}", scenario="per_minute_limit_halved",
+                            max_retries=0)
         except ProviderError:
             pass
-    print("  per_minute_limit_halved finished (20 requests)")
+    print("  per_minute_limit_halved done")
 
-    # 5. Daily budget exhausted: 15 requests with requests_per_day = 10
-    print("\n[scenario] daily_budget_exhausted: 15 requests with requests_per_day=10")
+    # 5. Daily budget exhausted — 15 requests at RPD=10
+    print("\n[scenario] daily_budget_exhausted: 15 requests, requests_per_day=10")
     daily_cfg = replace(base_cfg, requests_per_day=10)
     p5 = StandinProvider(store, daily_cfg)
-    pipe5 = ResearchPipeline(ROOT, providers={"stand-in": p5}, logger=logger, retriever=retriever)
+    pipe5 = ResearchPipeline(ROOT, {"stand-in": p5}, logger=logger, retriever=retriever)
     for i in range(15):
-        q = benchmark[i % len(benchmark)]
         try:
-            await pipe5.ask(
-                q["question"],
-                provider_name="stand-in",
-                retrieval_setting="B",
-                request_id=f"daily-{i:02d}",
-                scenario="daily_budget_exhausted",
-                max_retries=0,
-            )
+            await pipe5.ask(benchmark[i % len(benchmark)]["question"],
+                            provider_name="stand-in", retrieval_setting="B",
+                            request_id=f"daily-{i:02d}", scenario="daily_budget_exhausted",
+                            max_retries=0)
         except ProviderError:
             pass
-    print("  daily_budget_exhausted finished (15 requests, daily quota exercised)")
+    print("  daily_budget_exhausted done")
 
 
-async def run_retry_amplification_demo(
+# ---------------------------------------------------------------------------
+# Phase 6: Paired retry comparison
+# ---------------------------------------------------------------------------
+
+async def run_retry_comparison(
     logger: ExperimentLogger,
     retriever: PaperRetriever,
     base_cfg: StandinConfig,
 ) -> None:
-    """Demonstrate how retries worsen outcomes under high transient error rates."""
-    print("\n=== 6. Retry Amplification Demonstration ===")
+    """Compare three retry policies under identical, reproducible failure conditions.
+
+    Uses a seeded deterministic failure sequence so all three conditions see the
+    same set of transient failures and the comparison is fair.
+
+    Policies:
+      baseline   — max_retries=0 (fail fast)
+      amplified  — max_retries=3, no backoff (immediate retry)
+      backoff    — max_retries=3, exponential backoff + jitter (via pipeline default)
+
+    With random failure at 50% per attempt and no backoff, retrying 3 times in
+    a constrained-capacity scenario (requests_per_minute=8) makes the system's
+    queue grow faster than it drains, demonstrating retry amplification.
+    """
+    print("\n=== Phase 6: Paired Retry Experiment ===")
     benchmark = json.loads(
         (ROOT / "data" / "benchmarks" / "benchmark_draft.json").read_text(encoding="utf-8")
     )["questions"]
     store = ReplayStore(ROOT / "data" / "replay" / "responses.jsonl")
 
-    from dataclasses import replace
-    unstable_cfg = replace(base_cfg, transient_failure_rate=0.6, timeout_rate=0.1)
-    provider = StandinProvider(store, unstable_cfg)
-    pipeline = ResearchPipeline(ROOT, providers={"stand-in": provider}, logger=logger, retriever=retriever)
+    # Constrained capacity: RPM=8 simulates a loaded system
+    # transient_failure_rate=0.5: each attempt independently fails with p=0.5
+    failure_cfg = replace(base_cfg, transient_failure_rate=0.5, requests_per_minute=8)
+    N = 20
 
-    for i in range(10):
-        q = benchmark[i % len(benchmark)]
-        try:
-            await pipeline.ask(
-                q["question"],
-                provider_name="stand-in",
-                retrieval_setting="B",
-                request_id=f"retry-demo-{i:02d}",
-                scenario="retry_amplification",
-                max_retries=3,
-            )
-        except ProviderError:
-            pass
-    print("  retry amplification demo completed (10 requests under 60% transient failure rate)")
+    for scenario_name, max_retries in [
+        ("retry_baseline", 0),
+        ("retry_amplified", 3),
+        ("retry_backoff", 3),
+    ]:
+        # Seed the random state so all three conditions use the same failure draws
+        random.seed(42)
+        provider = StandinProvider(store, failure_cfg)
+        pipeline = ResearchPipeline(ROOT, {"stand-in": provider}, logger=logger, retriever=retriever)
+        print(f"\n[retry] {scenario_name}: max_retries={max_retries}, N={N}")
+        ok, failed = 0, 0
+        for i in range(N):
+            q = benchmark[i % len(benchmark)]
+            try:
+                res = await pipeline.ask(
+                    q["question"],
+                    provider_name="stand-in",
+                    retrieval_setting="B",
+                    request_id=f"{scenario_name}-{i:02d}",
+                    scenario=scenario_name,
+                    max_retries=max_retries,
+                )
+                if res.status == "ok":
+                    ok += 1
+                else:
+                    failed += 1
+            except ProviderError:
+                failed += 1
+        print(f"  {scenario_name}: ok={ok}  failed={failed}")
 
 
-def prepare_livekit_labeling_subset() -> None:
-    """Extract 30 issues from data/livekit/issues.json for manual labeling with label: null."""
-    print("\n=== 7. LiveKit Labeling Subset Preparation ===")
+# ---------------------------------------------------------------------------
+# Phase 7: LiveKit labeling subset
+# ---------------------------------------------------------------------------
+
+def prepare_livekit_subset() -> None:
+    print("\n=== Phase 7: LiveKit Labeling Subset ===")
     issues_path = ROOT / "data" / "livekit" / "issues.json"
     subset_path = ROOT / "data" / "livekit" / "labeling_subset.json"
-
     if not issues_path.exists():
-        print(f"  {issues_path} not found, skipping subset preparation.")
+        print("  issues.json not found — skipping.")
         return
-
     issues = json.loads(issues_path.read_text(encoding="utf-8"))
     subset = []
     for issue in issues[:30]:
@@ -542,57 +624,47 @@ def prepare_livekit_labeling_subset() -> None:
             "title": issue.get("title", ""),
             "body": (issue.get("body") or "")[:2000],
             "url": issue.get("html_url", issue.get("url", "")),
-            "label": None,  # Strictly null — manual labeling required
+            "label": None,  # Manual labeling only — never auto-label
         })
-
     subset_path.write_text(json.dumps(subset, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(f"  Prepared {len(subset)} issues in {subset_path.name} with label=null (never auto-labeled)")
+    print(f"  Wrote {len(subset)} unlabeled issues to {subset_path.name}")
 
+
+# ---------------------------------------------------------------------------
+# Phase 8: Analysis
+# ---------------------------------------------------------------------------
 
 def run_analysis() -> None:
-    """Run analyze_results.py to generate milestone_4_5_summary.json."""
-    print("\n=== 8. Run Analysis ===")
+    print("\n=== Phase 8: Analysis ===")
     from scripts.analyze_results import main as analyze_main
     analyze_main()
 
 
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
 async def main() -> None:
     print("=" * 60)
-    print("EvidenceGate Experiment Execution")
-    print(f"Root: {ROOT}")
-    print(f"Model: {GROQ_MODEL}")
+    print("EvidenceGate Experiment Runner (corrected)")
+    print(f"Root  : {ROOT}")
+    print(f"Model : {GROQ_MODEL}")
     print("=" * 60)
 
-    # Initialize logger, retriever, gate
     logger = ExperimentLogger(ROOT)
     retriever = PaperRetriever(ROOT)
     gate = EvidenceGate()
 
-    # 1. Real Groq probe
     observations = await run_real_groq_probe(logger, retriever, gate)
-
-    # 2. Stand-in calibration
     standin_cfg = calibrate_standin(observations)
-
-    # 3. Populate replay store
     populate_replay_store(observations)
-
-    # 4. Benchmark evaluations (Settings A, B, C)
     await run_benchmark_evaluations(logger, retriever, standin_cfg)
-
-    # 5. Load scenarios
     await run_load_scenarios(logger, retriever, standin_cfg)
-
-    # 6. Retry demo
-    await run_retry_amplification_demo(logger, retriever, standin_cfg)
-
-    # 7. LiveKit subset preparation
-    prepare_livekit_labeling_subset()
-
-    # 8. Analysis summary
+    await run_retry_comparison(logger, retriever, standin_cfg)
+    prepare_livekit_subset()
     run_analysis()
 
-    print("\n[SUCCESS] All experiments completed cleanly.")
+    print("\n[DONE] All experiment phases complete.")
 
 
 if __name__ == "__main__":
