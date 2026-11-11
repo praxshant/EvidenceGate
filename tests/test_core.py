@@ -1,6 +1,6 @@
 """Comprehensive test suite for EvidenceGate.
 
-Covers all 30 core test scenarios:
+Covers all 36 core test scenarios:
  1. Complete successful pipeline request
  2. Correctly refused unsupported request
  3. Partially supported request
@@ -31,6 +31,12 @@ Covers all 30 core test scenarios:
 28. Latency invariant: total_ms >= first_token_ms for every row in results.csv
 29. GroqProvider call uses include_reasoning and reasoning_effort (not reasoning_format)
 30. Scenario summary never produces ttft_p50 > total_p50 on paired population
+31. Concurrent request metadata isolation (no crosstalk, proper cleanup)
+32. Streaming deadline enforcement
+33. Mid-stream failure followed by clean retry (resets partial state)
+34. Benchmark refusal grading (refused_correctly vs refused_wrongly)
+35. Admission control queue depth and rate limiting
+36. Stand-in input plus output token budget accounting
 """
 
 from __future__ import annotations
@@ -47,7 +53,7 @@ from fastapi.testclient import TestClient
 
 from src.api import create_app
 from src.logging_utils import RESULT_COLUMNS, DiagnosticEntry, ExperimentLogger, monotonic_ms, now_iso_hires
-from src.pipeline import EvidenceGate, ResearchPipeline
+from src.pipeline import AdmissionController, EvidenceGate, ResearchPipeline
 from src.providers.base import ErrorKind, GenerationRequest, ModelProvider, ProviderError
 from src.providers.groq_client import GroqProvider
 from src.providers.standin_client import ReplayStore, StandinConfig, StandinProvider
@@ -791,3 +797,192 @@ def test_scenario_summary_no_ttft_total_inversion(tmp_path: Path) -> None:
                 assert total_p50 >= ttft_p50, (
                     f"Latency population inversion: ttft_p50={ttft_p50} > total_p50={total_p50}"
                 )
+
+
+# ---------------------------------------------------------------------------
+# 31. Concurrent request metadata isolation (no crosstalk, proper cleanup)
+# ---------------------------------------------------------------------------
+
+def test_concurrent_metadata_isolation(tmp_path: Path) -> None:
+    """Concurrent requests must not overwrite each other's metadata."""
+    path = tmp_path / "replay.jsonl"
+    r1 = {"question": "q1", "answer": "a1", "tokens_in": 10, "tokens_out": 20}
+    r2 = {"question": "q2", "answer": "a2", "tokens_in": 30, "tokens_out": 40}
+    path.write_text(f"{json.dumps(r1)}\n{json.dumps(r2)}\n", encoding="utf-8")
+
+    provider = StandinProvider(ReplayStore(path), StandinConfig(base_delay_seconds=0.01, jitter_seconds=0))
+
+    async def call(req_id: str, q: str):
+        req = GenerationRequest(req_id, q, "prompt")
+        pieces = [p async for p in provider.stream(req)]
+        meta = provider.pop_request_metadata(req_id)
+        return req_id, pieces, meta
+
+    async def run_concurrent():
+        return await asyncio.gather(call("req-1", "q1"), call("req-2", "q2"))
+
+    results = asyncio.run(run_concurrent())
+    res_map = {r[0]: r[2] for r in results}
+
+    assert res_map["req-1"]["usage"]["prompt_tokens"] == 10
+    assert res_map["req-1"]["usage"]["completion_tokens"] == 20
+    assert res_map["req-2"]["usage"]["prompt_tokens"] == 30
+    assert res_map["req-2"]["usage"]["completion_tokens"] == 40
+    # Confirm cleanup
+    assert provider.get_request_metadata("req-1") == {}
+    assert provider.get_request_metadata("req-2") == {}
+
+
+# ---------------------------------------------------------------------------
+# 32. Streaming deadline enforcement
+# ---------------------------------------------------------------------------
+
+def test_streaming_deadline_enforcement(tmp_path: Path, retriever: PaperRetriever) -> None:
+    """A provider stream that exceeds timeout_seconds must raise ErrorKind.TIMEOUT."""
+    class HangingProvider(ModelProvider):
+        @property
+        def model_name(self) -> str:
+            return "hanging"
+
+        async def stream(self, request: GenerationRequest):
+            await asyncio.sleep(request.timeout_seconds + 0.1)
+            yield "token"
+
+    pipe = ResearchPipeline(ROOT, {"hanging": HangingProvider()}, retriever=retriever)
+    with pytest.raises(ProviderError) as exc:
+        asyncio.run(pipe.ask("What is self-attention?", provider_name="hanging", max_retries=0, timeout_seconds=0.05))
+    assert exc.value.kind == ErrorKind.TIMEOUT
+
+
+# ---------------------------------------------------------------------------
+# 33. Mid-stream failure followed by clean retry (resets partial state)
+# ---------------------------------------------------------------------------
+
+def test_mid_stream_failure_followed_by_retry(tmp_path: Path, retriever: PaperRetriever) -> None:
+    """Partial tokens from a failed attempt must not contaminate retried response."""
+    valid_ans = "[Attention Is All You Need, §Abstract, p.1] The Transformer uses attention without recurrence."
+
+    class FailingThenSucceedingProvider(ModelProvider):
+        def __init__(self):
+            self.attempts = 0
+
+        @property
+        def model_name(self) -> str:
+            return "retry-test"
+
+        async def stream(self, request: GenerationRequest):
+            self.attempts += 1
+            if self.attempts == 1:
+                yield "PARTIAL_GARBAGE_"
+                raise ProviderError("Mid-stream transient failure", ErrorKind.TRANSIENT)
+            yield valid_ans
+
+    provider = FailingThenSucceedingProvider()
+    pipe = ResearchPipeline(ROOT, {"retry-test": provider}, retriever=retriever)
+    result = asyncio.run(pipe.ask("What is scaled dot-product attention?", provider_name="retry-test", max_retries=1))
+
+    assert "PARTIAL_GARBAGE_" not in result.answer
+    assert result.answer == valid_ans
+    assert provider.attempts == 2
+
+
+# ---------------------------------------------------------------------------
+# 34. Benchmark refusal grading (refused_correctly vs refused_wrongly)
+# ---------------------------------------------------------------------------
+
+def test_benchmark_refusal_grading(tmp_path: Path, retriever: PaperRetriever) -> None:
+    """Benchmark refusal grading must distinguish answerable from unanswerable questions."""
+    logger = ExperimentLogger(tmp_path)
+    rep_file = tmp_path / "replay.jsonl"
+    rep_file.write_text(
+        json.dumps({
+            "question": "Which paper gives Groq RPM limit?",
+            "answer": "I cannot answer this from the approved research papers.",
+        }) + "\n",
+        encoding="utf-8",
+    )
+    pipe = ResearchPipeline(ROOT, {"stand-in": StandinProvider(ReplayStore(rep_file))},
+                            retriever=retriever, logger=logger)
+
+    # 1. Unanswerable question (expected refusal) -> refused_correctly
+    bm_unanswerable = {
+        "id": "q16",
+        "question": "Which paper gives Groq RPM limit?",
+        "expected_answerability": "unanswerable",
+    }
+    asyncio.run(pipe.ask(bm_unanswerable["question"], provider_name="stand-in",
+                         scenario="benchmark_setting_B", benchmark_item=bm_unanswerable))
+
+    # 2. Answerable question refused by gate -> refused_wrongly
+    bm_answerable = {
+        "id": "q01",
+        "question": "What is scaled dot-product attention?",
+        "expected_answerability": "answerable",
+    }
+    # Query with zero overlap in library to trigger gate refusal
+    unsupported_q = "What is the secret recipe for chocolate fudge brownies?"
+    asyncio.run(pipe.ask(unsupported_q, provider_name="stand-in",
+                         scenario="benchmark_setting_B", benchmark_item=bm_answerable))
+
+    rows = list(csv.DictReader((tmp_path / "results.csv").open(encoding="utf-8")))
+    assert rows[0]["answer_grade"] == "refused_correctly"
+    assert rows[1]["answer_grade"] == "refused_wrongly"
+
+
+# ---------------------------------------------------------------------------
+# 35. Admission control queue depth and rate limiting
+# ---------------------------------------------------------------------------
+
+def test_admission_control_queue_and_rate_limiting() -> None:
+    """Admission controller must reject requests when waiting queue is full."""
+    admission = AdmissionController(max_concurrency=1, max_queue_depth=1)
+
+    async def run_queue_test():
+        # Occupy the 1 active slot
+        q_exit1 = await admission.acquire(estimated_tokens=100)
+        assert q_exit1 > 0
+
+        # Create one waiting request
+        waiter_task = asyncio.create_task(admission.acquire(estimated_tokens=100))
+        await asyncio.sleep(0.01)
+
+        # Third request should exceed queue depth 1 and fail immediately
+        with pytest.raises(ProviderError) as exc:
+            await admission.acquire(estimated_tokens=100)
+        assert exc.value.kind == ErrorKind.RATE_LIMITED
+        assert "queue full" in str(exc.value)
+
+        # Release the first slot so waiter can finish
+        admission.release()
+        q_exit2 = await waiter_task
+        assert q_exit2 >= q_exit1
+        admission.release()
+
+    asyncio.run(run_queue_test())
+
+
+# ---------------------------------------------------------------------------
+# 36. Stand-in input plus output token budget accounting
+# ---------------------------------------------------------------------------
+
+def test_standin_token_accounting_input_plus_output(tmp_path: Path) -> None:
+    """StandinProvider must count both tokens_in and tokens_out against tokens_per_minute."""
+    path = tmp_path / "replay.jsonl"
+    path.write_text(
+        json.dumps({"question": "q", "answer": "a", "tokens_in": 60, "tokens_out": 40}),
+        encoding="utf-8",
+    )
+    # Total per call = 60 + 40 = 100 tokens. Limit is 150.
+    provider = StandinProvider(
+        ReplayStore(path),
+        StandinConfig(tokens_per_minute=150, base_delay_seconds=0, jitter_seconds=0, inter_chunk_seconds=0),
+    )
+
+    async def call():
+        return [p async for p in provider.stream(GenerationRequest("r", "q", "p"))]
+
+    asyncio.run(call())  # 100 tokens used <= 150
+    with pytest.raises(ProviderError) as exc:
+        asyncio.run(call())  # 100 + 100 = 200 > 150
+    assert exc.value.kind == ErrorKind.RATE_LIMITED
+    assert "token-per-minute" in str(exc.value)

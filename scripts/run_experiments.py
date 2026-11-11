@@ -109,7 +109,7 @@ async def run_real_groq_probe(
         return []
 
     from groq import AsyncGroq
-    client = AsyncGroq(api_key=GROQ_API_KEY)
+    client = AsyncGroq(api_key=GROQ_API_KEY, max_retries=0)
 
     print(f"\n=== Phase 1: Real Groq Probe ({GROQ_MODEL}) ===")
     observations: list[dict] = []
@@ -134,6 +134,7 @@ async def run_real_groq_probe(
         rl_headers: dict[str, str] = {}
         status = "ok"
         error_msg = ""
+        finish_reason: str | None = None
 
         try:
             stream_obj = await client.chat.completions.create(
@@ -156,6 +157,9 @@ async def run_real_groq_probe(
                     }
                 choices = getattr(chunk, "choices", None) or []
                 if choices:
+                    fr = getattr(choices[0], "finish_reason", None)
+                    if fr:
+                        finish_reason = fr
                     delta = getattr(choices[0], "delta", None)
                     content = getattr(delta, "content", None) if delta else None
                     if content:
@@ -250,6 +254,7 @@ async def run_real_groq_probe(
             "total_ms": total_ms,
             "tokens_in": tokens_in,
             "tokens_out": tokens_out,
+            "finish_reason": finish_reason,
             "headers": rl_headers,
             "status": status,
         })
@@ -443,6 +448,7 @@ async def run_benchmark_evaluations(
                 retrieval_setting=setting,
                 request_id=f"bench-{setting}-{q['id']}",
                 scenario=f"benchmark_setting_{setting}",
+                benchmark_item=q,
             )
             if res.status == "ok":
                 counts["ok"] += 1
