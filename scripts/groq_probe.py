@@ -60,7 +60,7 @@ async def run_probe(
                 messages=[{"role": "user", "content": "Say hello in one sentence."}],
                 max_tokens=max_tokens,
                 stream=True,
-                stream_options={"include_usage": True},
+                reasoning_format="hidden",
             )
 
             async for chunk in stream_obj:
@@ -193,7 +193,7 @@ def main() -> int:
         return 1
 
     # Execute the real probe
-    api_key = os.environ["GROQ_API_KEY"]
+    api_key = os.environ.get("GROQ_API_KEY") or os.environ["GROQ_API_KEY_1"]
     model = os.environ["GROQ_MODEL"]
 
     print(

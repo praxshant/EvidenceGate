@@ -29,7 +29,11 @@ _RATELIMIT_HEADERS = frozenset(
 
 class GroqProvider(ModelProvider):
     def __init__(self, *, api_key: str | None = None, model: str | None = None) -> None:
-        self._api_key = api_key or os.getenv("GROQ_API_KEY")
+        self._api_key = (
+            api_key
+            or os.getenv("GROQ_API_KEY")
+            or os.getenv("GROQ_API_KEY_1")
+        )
         self._model = model or os.getenv("GROQ_MODEL", "")
         if not self._api_key:
             raise ProviderError("GROQ_API_KEY is not configured", ErrorKind.PERMANENT)
@@ -74,8 +78,9 @@ class GroqProvider(ModelProvider):
                     messages=[{"role": "user", "content": request.prompt}],
                     max_tokens=request.max_output_tokens,
                     stream=True,
-                    # F-05: ask Groq to stream a final chunk with usage data
-                    stream_options={"include_usage": True},
+                    # gpt-oss-20b is a reasoning model; hide the reasoning chain so
+                    # delta.content carries readable text instead of delta.reasoning.
+                    reasoning_format="hidden",
                 ),
                 timeout=request.timeout_seconds,
             )

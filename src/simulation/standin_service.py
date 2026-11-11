@@ -9,8 +9,11 @@ from ..providers.standin_client import ReplayStore, StandinConfig, StandinProvid
 
 
 def load_config(path: Path) -> StandinConfig:
+    from dataclasses import fields
     values = json.loads(path.read_text(encoding="utf-8"))
-    return StandinConfig(**values)
+    valid_keys = {f.name for f in fields(StandinConfig)}
+    filtered = {k: v for k, v in values.items() if k in valid_keys}
+    return StandinConfig(**filtered)
 
 
 def create_standin(root: Path, config_path: Path | None = None) -> StandinProvider:
