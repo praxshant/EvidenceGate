@@ -1,0 +1,513 @@
+{
+  "denominators": {
+    "total_questions": 20,
+    "answerable_questions": 10,
+    "partially_supported_questions": 5,
+    "unanswerable_questions": 5,
+    "gold_passage_evaluation_pool": 15,
+    "explanation": "Gold-passage recall and MRR are computed over the 15 questions with gold passages (10 answerable + 5 partially supported). Unanswerable questions (5) have no gold passages; their retrieval performance is measured by evidence-gate rejection rate (denominator = 5)."
+  },
+  "settings": {
+    "A": {
+      "description": "300-word chunks, top-k 3",
+      "gold_passage_recall_at_k": 1.0,
+      "mrr": 0.9,
+      "gold_hits": 15,
+      "gold_pool_size": 15,
+      "gate_decisions": {
+        "answerable": {
+          "sufficient": 9,
+          "partial": 1,
+          "insufficient": 0
+        },
+        "partially_supported": {
+          "sufficient": 1,
+          "partial": 3,
+          "insufficient": 1
+        },
+        "unanswerable": {
+          "sufficient": 1,
+          "partial": 3,
+          "insufficient": 1
+        }
+      },
+      "unanswerable_rejection_rate": 0.2,
+      "per_question": [
+        {
+          "qid": "q01",
+          "expected_answerability": "answerable",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q02",
+          "expected_answerability": "answerable",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q03",
+          "expected_answerability": "answerable",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q04",
+          "expected_answerability": "answerable",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q05",
+          "expected_answerability": "answerable",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q06",
+          "expected_answerability": "answerable",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q07",
+          "expected_answerability": "answerable",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q08",
+          "expected_answerability": "answerable",
+          "decision": "sufficient",
+          "matched_rank": 2,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q09",
+          "expected_answerability": "answerable",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q10",
+          "expected_answerability": "answerable",
+          "decision": "partial",
+          "matched_rank": 1,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q11",
+          "expected_answerability": "partially_supported",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q12",
+          "expected_answerability": "partially_supported",
+          "decision": "partial",
+          "matched_rank": 1,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q13",
+          "expected_answerability": "partially_supported",
+          "decision": "insufficient",
+          "matched_rank": 2,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q14",
+          "expected_answerability": "partially_supported",
+          "decision": "partial",
+          "matched_rank": 1,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q15",
+          "expected_answerability": "partially_supported",
+          "decision": "partial",
+          "matched_rank": 2,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q16",
+          "expected_answerability": "unanswerable",
+          "decision": "partial",
+          "matched_rank": null,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q17",
+          "expected_answerability": "unanswerable",
+          "decision": "insufficient",
+          "matched_rank": null,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q18",
+          "expected_answerability": "unanswerable",
+          "decision": "partial",
+          "matched_rank": null,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q19",
+          "expected_answerability": "unanswerable",
+          "decision": "partial",
+          "matched_rank": null,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q20",
+          "expected_answerability": "unanswerable",
+          "decision": "sufficient",
+          "matched_rank": null,
+          "retrieved_count": 3
+        }
+      ]
+    },
+    "B": {
+      "description": "500-word chunks, top-k 3",
+      "gold_passage_recall_at_k": 1.0,
+      "mrr": 0.9667,
+      "gold_hits": 15,
+      "gold_pool_size": 15,
+      "gate_decisions": {
+        "answerable": {
+          "sufficient": 9,
+          "partial": 1,
+          "insufficient": 0
+        },
+        "partially_supported": {
+          "sufficient": 2,
+          "partial": 2,
+          "insufficient": 1
+        },
+        "unanswerable": {
+          "sufficient": 1,
+          "partial": 3,
+          "insufficient": 1
+        }
+      },
+      "unanswerable_rejection_rate": 0.2,
+      "per_question": [
+        {
+          "qid": "q01",
+          "expected_answerability": "answerable",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q02",
+          "expected_answerability": "answerable",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q03",
+          "expected_answerability": "answerable",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q04",
+          "expected_answerability": "answerable",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q05",
+          "expected_answerability": "answerable",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q06",
+          "expected_answerability": "answerable",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q07",
+          "expected_answerability": "answerable",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q08",
+          "expected_answerability": "answerable",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q09",
+          "expected_answerability": "answerable",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q10",
+          "expected_answerability": "answerable",
+          "decision": "partial",
+          "matched_rank": 1,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q11",
+          "expected_answerability": "partially_supported",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q12",
+          "expected_answerability": "partially_supported",
+          "decision": "partial",
+          "matched_rank": 1,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q13",
+          "expected_answerability": "partially_supported",
+          "decision": "insufficient",
+          "matched_rank": 2,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q14",
+          "expected_answerability": "partially_supported",
+          "decision": "partial",
+          "matched_rank": 1,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q15",
+          "expected_answerability": "partially_supported",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q16",
+          "expected_answerability": "unanswerable",
+          "decision": "partial",
+          "matched_rank": null,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q17",
+          "expected_answerability": "unanswerable",
+          "decision": "insufficient",
+          "matched_rank": null,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q18",
+          "expected_answerability": "unanswerable",
+          "decision": "partial",
+          "matched_rank": null,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q19",
+          "expected_answerability": "unanswerable",
+          "decision": "partial",
+          "matched_rank": null,
+          "retrieved_count": 3
+        },
+        {
+          "qid": "q20",
+          "expected_answerability": "unanswerable",
+          "decision": "sufficient",
+          "matched_rank": null,
+          "retrieved_count": 3
+        }
+      ]
+    },
+    "C": {
+      "description": "500-word chunks, top-k 5, reranked",
+      "gold_passage_recall_at_k": 1.0,
+      "mrr": 0.9667,
+      "gold_hits": 15,
+      "gold_pool_size": 15,
+      "gate_decisions": {
+        "answerable": {
+          "sufficient": 9,
+          "partial": 1,
+          "insufficient": 0
+        },
+        "partially_supported": {
+          "sufficient": 2,
+          "partial": 2,
+          "insufficient": 1
+        },
+        "unanswerable": {
+          "sufficient": 1,
+          "partial": 3,
+          "insufficient": 1
+        }
+      },
+      "unanswerable_rejection_rate": 0.2,
+      "per_question": [
+        {
+          "qid": "q01",
+          "expected_answerability": "answerable",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 5
+        },
+        {
+          "qid": "q02",
+          "expected_answerability": "answerable",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 5
+        },
+        {
+          "qid": "q03",
+          "expected_answerability": "answerable",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 5
+        },
+        {
+          "qid": "q04",
+          "expected_answerability": "answerable",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 5
+        },
+        {
+          "qid": "q05",
+          "expected_answerability": "answerable",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 5
+        },
+        {
+          "qid": "q06",
+          "expected_answerability": "answerable",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 5
+        },
+        {
+          "qid": "q07",
+          "expected_answerability": "answerable",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 5
+        },
+        {
+          "qid": "q08",
+          "expected_answerability": "answerable",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 5
+        },
+        {
+          "qid": "q09",
+          "expected_answerability": "answerable",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 5
+        },
+        {
+          "qid": "q10",
+          "expected_answerability": "answerable",
+          "decision": "partial",
+          "matched_rank": 1,
+          "retrieved_count": 5
+        },
+        {
+          "qid": "q11",
+          "expected_answerability": "partially_supported",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 5
+        },
+        {
+          "qid": "q12",
+          "expected_answerability": "partially_supported",
+          "decision": "partial",
+          "matched_rank": 1,
+          "retrieved_count": 5
+        },
+        {
+          "qid": "q13",
+          "expected_answerability": "partially_supported",
+          "decision": "insufficient",
+          "matched_rank": 2,
+          "retrieved_count": 5
+        },
+        {
+          "qid": "q14",
+          "expected_answerability": "partially_supported",
+          "decision": "partial",
+          "matched_rank": 1,
+          "retrieved_count": 5
+        },
+        {
+          "qid": "q15",
+          "expected_answerability": "partially_supported",
+          "decision": "sufficient",
+          "matched_rank": 1,
+          "retrieved_count": 5
+        },
+        {
+          "qid": "q16",
+          "expected_answerability": "unanswerable",
+          "decision": "partial",
+          "matched_rank": null,
+          "retrieved_count": 5
+        },
+        {
+          "qid": "q17",
+          "expected_answerability": "unanswerable",
+          "decision": "insufficient",
+          "matched_rank": null,
+          "retrieved_count": 5
+        },
+        {
+          "qid": "q18",
+          "expected_answerability": "unanswerable",
+          "decision": "partial",
+          "matched_rank": null,
+          "retrieved_count": 5
+        },
+        {
+          "qid": "q19",
+          "expected_answerability": "unanswerable",
+          "decision": "partial",
+          "matched_rank": null,
+          "retrieved_count": 5
+        },
+        {
+          "qid": "q20",
+          "expected_answerability": "unanswerable",
+          "decision": "sufficient",
+          "matched_rank": null,
+          "retrieved_count": 5
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "limitation_note": "StandinProvider failure injection computes seed_str = f'{request_id}:{attempt}'. Because each scenario incorporates its scenario name into request_id, pseudo-random failure schedules differ across scenario names for the same index i. This limitation is noted per evaluation requirements.",
+  "policies": {
+    "zero_retries": {
+      "count": 20,
+      "status_counts": {
+        "ok": 6,
+        "rate_limited": 0,
+        "error": 14,
+        "timeout": 0
+      },
+      "mean_total_ms": 581.75
+    },
+    "immediate_retries": {
+      "count": 20,
+      "status_counts": {
+        "ok": 10,
+        "rate_limited": 0,
+        "error": 10,
+        "timeout": 0
+      },
+      "mean_total_ms": 1340.32
+    },
+    "exponential_backoff": {
+      "count": 20,
+      "status_counts": {
+        "ok": 8,
+        "rate_limited": 0,
+        "error": 12,
+        "timeout": 0
+      },
+      "mean_total_ms": 1203.74
+    }
+  }
+}

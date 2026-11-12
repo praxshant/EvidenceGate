@@ -1,0 +1,36 @@
+{
+  "successful_streaming": {
+    "status": "error",
+    "first_token_ms": null,
+    "total_ms": 1978.45,
+    "passed": false
+  },
+  "correct_refusal": {
+    "status": "ok",
+    "decision": "partial",
+    "is_abstention": true,
+    "passed": false
+  },
+  "citation_rejection": {
+    "valid": false,
+    "reason": "No citations found",
+    "passed": true
+  },
+  "admission_control": {
+    "queue_waiting_verified": true,
+    "queue_full_rejected_immediately": true,
+    "passed": true
+  },
+  "token_accounting_input_plus_output": {
+    "rejected_on_total_tokens": false,
+    "passed": false
+  },
+  "api_endpoints": {
+    "health_status_code": 200,
+    "health_json": {
+      "status": "ok"
+    },
+    "ask_status_code": 502,
+    "passed": false
+  }
+}

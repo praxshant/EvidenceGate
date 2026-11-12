@@ -1,0 +1,47 @@
+{
+  "final_steady_load": {
+    "count": 20,
+    "status_distribution": {
+      "ok": 10,
+      "rate_limited": 0,
+      "error": 10,
+      "timeout": 0
+    }
+  },
+  "final_sudden_burst": {
+    "count": 20,
+    "status_distribution": {
+      "ok": 10,
+      "rate_limited": 0,
+      "error": 10,
+      "timeout": 0
+    }
+  },
+  "final_sustained_overload": {
+    "count": 50,
+    "status_distribution": {
+      "ok": 23,
+      "rate_limited": 0,
+      "error": 27,
+      "timeout": 0
+    }
+  },
+  "final_per_minute_halved": {
+    "count": 20,
+    "status_distribution": {
+      "ok": 4,
+      "rate_limited": 7,
+      "error": 9,
+      "timeout": 0
+    }
+  },
+  "final_daily_exhausted": {
+    "count": 15,
+    "status_distribution": {
+      "ok": 2,
+      "rate_limited": 11,
+      "error": 2,
+      "timeout": 0
+    }
+  }
+}
