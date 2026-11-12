@@ -106,5 +106,17 @@ does not replace the required unedited conversation history.
 - Completed Phase 4 Stand-in Load & E2E Testing: Evaluated steady load, sudden burst, sustained overload, halved per-minute limit (rate-limiting verified), and daily budget exhaustion (quota exhaustion verified); evaluated retry policies and noted hash seed scope limitation; verified admission control queue behavior and citation rejection.
 - Completed Phase 5 Reconciliation: Reconciled 233 unique records in `data/final_evaluation/results.csv` and `diagnostics.jsonl` with 100% schema conformance, zero latency inversions, and captured response headers in `raw_headers.jsonl`.
 
+## Final Submission Verification, Human Grading & Technical Audit Reconciliation
+
+- Candidate directive: Execute final audit reconciliation, manual labeling of the 30 LiveKit issues, human evaluation of all 14 successful Groq completions and 6 gate refusals, investigate evidence gate behavior, update README to Milestone 5, and compile the final evaluation report.
+- Manual Labeling of LiveKit Dataset: Reviewed all 30 issues in `data/livekit/labeling_subset.json` and assigned ground-truth label `unanswerable` with specific per-issue technical rationales, confirming that the 3 approved research papers do not address LiveKit RTC/agents/plugins infrastructure.
+- Human Evaluation of Real Groq Completions: Audited all 14 successful completions from `data/final_evaluation/answers.jsonl` (7 in Setting A, 7 in Setting B, 0 in Setting C). Confirmed raw model factual accuracy of 14/14 (100%). Identified that 4 provisional failures were verifier false negatives caused by Unicode bracket characters (`【...】` vs `[...]`).
+- Audited 6 Pre-Provider Gate Refusals: Confirmed 3 correct refusals for unanswerable question q17 and 3 over-conservative refusals for Hinglish partially supported question q13.
+- Investigated Evidence Gate Vulnerability: Traced `EvidenceGate.decide()` on unanswerable questions q16-q20. Discovered root cause: BM25 score inflation from question keywords exceeded the 5.0 threshold, causing 4 of 5 unanswerable questions to receive `partial` or `sufficient` decisions and bypass early refusal.
+- Documented Setting C Failure Mode: Characterized Setting C prompt payload size (~4.5k tokens) causing connection timeouts / socket closures on all 13 provider attempts under `max_retries=0`.
+- Documented Artifact Discrepancies: Reconciled early probe `groq-probe-q08` empty header log (uncaught RateLimitError) with final evaluation success; reconciled `e2e_test_results.json` 165 vs 200 TPM test threshold.
+- Updated Documentation: Fully updated `README.md` to reflect Milestone 5 state, test suite instructions, architecture diagram, and reproduction steps. Produced comprehensive `FINAL_EVALUATION_REPORT.md`.
+- Test Suite: Verified all 36 tests pass offline with exit code 0.
+
 Future entries must distinguish assistant suggestions from the candidate's
 decisions and must record mistakes only when they are actually observed.
